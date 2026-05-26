@@ -22,6 +22,41 @@ ECS is being used now to get the app running on AWS earlier and at lower complex
 
 ## What Has Been Done
 
+## 11-Stage Progress Summary
+
+This is the simple stage-by-stage view of the full project.
+
+| Stage | Status | What It Means | What To Do |
+|-------|--------|---------------|------------|
+| Stage 0: Repository Structure | Completed | Project folders, docs folders, infrastructure folders, GitHub workflow folder, and service folders are prepared. | Keep source code organized in the existing structure. |
+| Stage 1: Terraform Backend | Completed | S3, DynamoDB, and KMS were created for remote Terraform state. | Use this backend for staging/prod Terraform. Do not delete it until all environments are destroyed. |
+| Stage 2: Networking | Code ready, apply pending | Terraform code exists for VPC, subnets, routes, security groups, and endpoints. | Apply staging Terraform first. Keep NAT Gateway and Flow Logs disabled for low cost. |
+| Stage 3: Container Registry | Code ready, apply pending | Terraform code exists for five ECR repositories with scan-on-push and lifecycle cleanup. | Apply staging Terraform, then GitHub Actions can push images. |
+| Stage 4: Managed Backends | Not started | DynamoDB, SQS, RDS PostgreSQL, SES, Secrets Manager, and KMS for the app are not fully added yet. | Add DynamoDB and SQS first because they are low-cost. Add RDS later because it costs more. |
+| Stage 5: ECS Temporary Deployment | Code ready, apply pending | ECS is added as a temporary AWS deployment target before EKS. | Apply staging Terraform, add GitHub secrets, then run the ECS workflow. |
+| Stage 6: EKS Kubernetes Cluster | Not started | Final managed Kubernetes cluster is not created yet. | Add EKS Terraform after ECS demo works. |
+| Stage 7: Kubernetes App Manifests | Not started | Namespaces, Deployments, Services, Ingress, HPA, PDB, ConfigMaps, Secrets, and NetworkPolicies are still pending. | Create Kubernetes manifests after EKS is ready. |
+| Stage 8: CI/CD Final Pipeline | Partially done | GitHub Actions exists for Terraform checks, service CI, ECR push, and ECS deploy. Kubernetes deploy is not done yet. | Later extend workflow to deploy to EKS staging/prod. |
+| Stage 9: Observability and Security | Not started | CloudWatch dashboards, alarms, GuardDuty, WAF, IRSA, and policy controls are pending. | Add after app runs on EKS. |
+| Stage 10: Cost Management | Partially done | Tags and low-cost defaults are added, but budgets and cost reports are not done. | Add AWS Budget, collect Cost Explorer screenshots, calculate cost per 1,000 orders. |
+| Stage 11: Disaster Recovery and Final Deliverables | Not started | Backups, restore proof, diagrams, report, ADR summaries, and demo script are pending. | Complete near the end after infrastructure is stable. |
+
+Current practical next step:
+
+```text
+Apply Stage 2 + Stage 3 + Stage 5 in staging.
+```
+
+That means applying the staging Terraform environment, which now creates:
+
+```text
+VPC networking
+ECR repositories
+ECS temporary deployment foundation
+```
+
+Then run GitHub Actions to build and deploy the app to ECS.
+
 ### Stage 0: Repository Structure
 
 The repository now contains:
