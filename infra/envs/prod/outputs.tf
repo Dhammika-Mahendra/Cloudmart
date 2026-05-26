@@ -47,3 +47,8 @@ output "ecs_task_role_arn" {
   description = "Value for GitHub secret ECS_TASK_ROLE_ARN."
   value       = module.ecs.task_role_arn
 }
+
+output "ecs_frontend_port" {
+  description = "Temporary public frontend port."
+  value       = module.ecs.frontend_port
+}

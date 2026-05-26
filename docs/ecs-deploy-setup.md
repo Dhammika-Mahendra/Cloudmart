@@ -106,7 +106,7 @@ aws ecs update-service \
 
 The starter ECS task definition runs all five containers in one Fargate task:
 
-- frontend: public container on port `80`
+- frontend: public container on port `8080`
 - product-service: localhost `8001`
 - order-service: localhost `8002`
 - user-service: localhost `8003`
@@ -170,5 +170,5 @@ aws ec2 describe-network-interfaces \
 Open:
 
 ```text
-http://<PUBLIC_IP>
+http://<PUBLIC_IP>:8080
 ```

@@ -177,7 +177,7 @@ ECS cluster
 ECS Fargate service
 ECS task execution role
 ECS task role
-ECS security group allowing HTTP port 80
+ECS security group allowing HTTP port 8080
 CloudWatch log group
 ```
 
@@ -520,13 +520,13 @@ aws ec2 describe-network-interfaces ^
 Open:
 
 ```text
-http://<PUBLIC_IP>
+http://<PUBLIC_IP>:8080
 ```
 
 Health check:
 
 ```text
-http://<PUBLIC_IP>/health
+http://<PUBLIC_IP>:8080/health
 ```
 
 Expected:
@@ -672,7 +672,7 @@ Temporary ECS architecture:
 
 ```text
 Browser
-  -> ECS Fargate Task Public IP :80
+  -> ECS Fargate Task Public IP :8080
     -> frontend container
       -> /api/products -> product-service on 127.0.0.1:8001
       -> /api/orders   -> order-service on 127.0.0.1:8002

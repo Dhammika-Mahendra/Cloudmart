@@ -23,6 +23,11 @@ output "service_security_group_id" {
   value       = aws_security_group.service.id
 }
 
+output "frontend_port" {
+  description = "Temporary public frontend port."
+  value       = var.frontend_port
+}
+
 output "log_group_name" {
   description = "CloudWatch log group used by ECS tasks."
   value       = aws_cloudwatch_log_group.this.name

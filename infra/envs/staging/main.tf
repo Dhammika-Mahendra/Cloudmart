@@ -60,6 +60,7 @@ module "ecs" {
   vpc_id                    = module.network.vpc_id
   subnet_ids                = module.network.public_subnet_ids
   allowed_http_cidrs        = var.ecs_allowed_http_cidrs
+  frontend_port             = var.ecs_frontend_port
   task_cpu                  = var.ecs_task_cpu
   task_memory               = var.ecs_task_memory
   desired_count             = var.ecs_desired_count

@@ -68,8 +68,8 @@ resource "aws_security_group" "service" {
 
   ingress {
     description = "HTTP to frontend container"
-    from_port   = 80
-    to_port     = 80
+    from_port   = var.frontend_port
+    to_port     = var.frontend_port
     protocol    = "tcp"
     cidr_blocks = var.allowed_http_cidrs
   }
@@ -103,7 +103,7 @@ resource "aws_ecs_task_definition" "bootstrap" {
       essential = true
       portMappings = [
         {
-          containerPort = 80
+          containerPort = var.frontend_port
           protocol      = "tcp"
         }
       ]

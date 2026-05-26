@@ -70,9 +70,15 @@ variable "bastion_allowed_ssh_cidrs" {
 }
 
 variable "ecs_allowed_http_cidrs" {
-  description = "CIDR blocks allowed to access the temporary ECS frontend on port 80."
+  description = "CIDR blocks allowed to access the temporary ECS frontend."
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+variable "ecs_frontend_port" {
+  description = "Temporary public frontend port for ECS before a load balancer is added."
+  type        = number
+  default     = 8080
 }
 
 variable "ecs_task_cpu" {

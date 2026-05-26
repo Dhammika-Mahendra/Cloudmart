@@ -19,9 +19,15 @@ variable "subnet_ids" {
 }
 
 variable "allowed_http_cidrs" {
-  description = "CIDR blocks allowed to access the frontend on port 80."
+  description = "CIDR blocks allowed to access the temporary ECS frontend."
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+variable "frontend_port" {
+  description = "Temporary public frontend port for the no-load-balancer ECS service."
+  type        = number
+  default     = 8080
 }
 
 variable "task_cpu" {
