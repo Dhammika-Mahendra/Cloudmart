@@ -15,6 +15,8 @@ FROM nginx:1.27-alpine
 
 ARG NGINX_CONF=nginx.conf
 
+RUN apk upgrade --no-cache
+
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
