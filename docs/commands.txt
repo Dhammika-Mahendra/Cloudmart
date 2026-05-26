@@ -1,0 +1,47 @@
+docker build -t cloudmart-frontend ./services/frontend
+
+
+docker run -d --name cloudmart-frontend -p 3000:80 cloudmart-frontend
+
+
+
+============================
+postgre SQL db
+===========================
+
+docker run --name my-postgres -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=admin123 -e POSTGRES_DB=mydb -p 5432:5432 -d postgres:16-alpine
+
+docker run --name my-postgres -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=admin123 -e POSTGRES_DB=mydb -p 5432:5432 -v pgdata:/var/lib/postgresql/data -d postgres:16-alpine
+
+
+CREATE TABLE users (
+    id VARCHAR(50) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    password_hash TEXT NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    address TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
+INSERT INTO users (
+    id,
+    email,
+    name,
+    password_hash,
+    role,
+    address,
+    created_at
+)
+VALUES (
+    'user-001',
+    'alice@cloudmart.example',
+    'Alice Fernando',
+    '$2b$12$examplehashedpassword',
+    'customer',
+    '42 Galle Road, Colombo 03, Sri Lanka',
+    '2025-01-10T08:00:00Z'
+);
+
+SELECT * FROM users;
