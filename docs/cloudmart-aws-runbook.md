@@ -249,6 +249,7 @@ Docker Desktop, optional for local app testing
 
 Check Terraform:
 
+
 ```cmd
 terraform version
 ```
