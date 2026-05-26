@@ -64,7 +64,7 @@ After bootstrap, reduce permissions where possible and use environment-specific 
 
 ### `terraform-checks.yml`
 
-Runs automatically on pull requests and pushes to `main` or `develop` when infrastructure files change.
+Runs automatically on pull requests and pushes to `main` or `dev-ramosh99` when infrastructure files change.
 
 It performs:
 
