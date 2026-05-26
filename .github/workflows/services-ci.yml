@@ -123,7 +123,7 @@ jobs:
         run: docker build -t cloudmart/${{ matrix.service }}:${{ github.sha }} ${{ matrix.context }}
 
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: cloudmart/${{ matrix.service }}:${{ github.sha }}
           format: table
