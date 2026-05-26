@@ -113,8 +113,8 @@ jobs:
     name: Deploy to ECS
     runs-on: ubuntu-latest
     needs: build-push
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy_to_ecs
-    environment: ${{ inputs.environment }}
+    if: github.ref_name == 'dev-ramosh99' || (github.event_name == 'workflow_dispatch' && inputs.deploy_to_ecs)
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
 
     steps:
       - name: Checkout
@@ -130,7 +130,7 @@ jobs:
         run: |
           sed \
             -e "s|__AWS_REGION__|${AWS_REGION}|g" \
-            -e "s|__ENVIRONMENT__|${{ inputs.environment }}|g" \
+            -e "s|__ENVIRONMENT__|${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}|g" \
             -e "s|__ECR_REGISTRY__|${{ needs.build-push.outputs.registry }}|g" \
             -e "s|__IMAGE_TAG__|${{ needs.build-push.outputs.image-tag }}|g" \
             -e "s|__ECS_TASK_EXECUTION_ROLE_ARN__|${{ secrets.ECS_TASK_EXECUTION_ROLE_ARN }}|g" \
@@ -140,10 +140,11 @@ jobs:
 
       - name: Ensure CloudWatch log group exists
         run: |
-          aws logs describe-log-groups --log-group-name-prefix "/ecs/cloudmart-${{ inputs.environment }}" \
-            --query "logGroups[?logGroupName=='/ecs/cloudmart-${{ inputs.environment }}'].logGroupName" \
-            --output text | grep -q "/ecs/cloudmart-${{ inputs.environment }}" || \
-          aws logs create-log-group --log-group-name "/ecs/cloudmart-${{ inputs.environment }}"
+          LOG_GROUP="/ecs/cloudmart-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}"
+          aws logs describe-log-groups --log-group-name-prefix "${LOG_GROUP}" \
+            --query "logGroups[?logGroupName=='${LOG_GROUP}'].logGroupName" \
+            --output text | grep -q "${LOG_GROUP}" || \
+          aws logs create-log-group --log-group-name "${LOG_GROUP}"
 
       - name: Register ECS task definition
         id: register-task
