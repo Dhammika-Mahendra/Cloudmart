@@ -13,11 +13,13 @@ RUN npm run build
 # ---- Stage 2: Serve with Nginx ----
 FROM nginx:1.27-alpine
 
+ARG NGINX_CONF=nginx.conf
+
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY ${NGINX_CONF} /etc/nginx/conf.d/default.conf
 
 # Copy built React app
 COPY --from=builder /build/build /usr/share/nginx/html

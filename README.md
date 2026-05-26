@@ -198,7 +198,54 @@ cloudmart-starter/
 
 ## Cloud Provider
 
-**Chosen provider:** _[Your group fills this in: AWS / GCP / Azure]_
+**Chosen provider:** AWS
+
+AWS service mapping for this project:
+
+| Requirement | AWS Service |
+|-------------|-------------|
+| Managed Kubernetes | Amazon EKS |
+| Container registry | Amazon ECR |
+| Relational database | Amazon RDS for PostgreSQL |
+| NoSQL database | Amazon DynamoDB |
+| Message queue | Amazon SQS |
+| Email service | Amazon SES |
+| Load balancer / Ingress | AWS Load Balancer Controller + ALB |
+| Monitoring and logs | Amazon CloudWatch |
+| Threat detection | Amazon GuardDuty |
+| Object storage | Amazon S3 |
+| Key management | AWS KMS |
+| Secret management | AWS Secrets Manager |
+
+## AWS Deployment Roadmap
+
+The repository is prepared for staged AWS deployment:
+
+1. Stage 0: repository structure, service folders, `infra/`, `k8s/`, and `docs/adr/`.
+2. Stage 1: Terraform backend bootstrap using S3, DynamoDB state locking, and KMS encryption.
+3. Stage 2: VPC, public/private/data subnets, route tables, NAT gateway, VPC endpoints, and flow logs.
+4. Stage 3: ECR repositories for all five services.
+5. Stage 4: RDS PostgreSQL, DynamoDB, SQS, SES, Secrets Manager, and KMS.
+6. Stage 5: EKS cluster, node groups, IRSA, cluster add-ons, and AWS Load Balancer Controller.
+7. Stage 6: Kubernetes Deployments, Services, Ingress, ConfigMaps, Secrets, HPA, PDB, and NetworkPolicies.
+8. Stage 7: GitHub Actions CI/CD for test, build, Trivy scan, push to ECR, and deploy to staging/prod.
+
+Start with:
+
+```bash
+cd infra/bootstrap
+terraform init
+terraform plan -var-file=terraform.tfvars
+terraform apply -var-file=terraform.tfvars
+```
+
+Copy `infra/bootstrap/terraform.tfvars.example` to `infra/bootstrap/terraform.tfvars` first and update `team_id` and `owner_email`.
+
+GitHub Actions setup notes are available in `docs/github-actions-setup.md`.
+Temporary ECS deployment notes are available in `docs/ecs-deploy-setup.md`.
+The full AWS setup and progress runbook is available in `docs/cloudmart-aws-runbook.md`.
+
+For low-cost Stage 2 deployment, NAT Gateway and VPC Flow Logs are disabled by default. Enable them only when you need private subnet internet egress or flow-log evidence for the report.
 
 ## Team Members
 

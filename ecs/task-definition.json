@@ -1,0 +1,180 @@
+{
+  "family": "cloudmart-__ENVIRONMENT__",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "__ECS_TASK_EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__ECS_TASK_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "product-service",
+      "image": "__ECR_REGISTRY__/cloudmart/product-service:__IMAGE_TAG__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8001,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8001"
+        },
+        {
+          "name": "STORE_BACKEND",
+          "value": "memory"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudmart-__ENVIRONMENT__",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "product-service"
+        }
+      }
+    },
+    {
+      "name": "order-service",
+      "image": "__ECR_REGISTRY__/cloudmart/order-service:__IMAGE_TAG__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8002,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8002"
+        },
+        {
+          "name": "PRODUCT_SERVICE_URL",
+          "value": "http://127.0.0.1:8001"
+        },
+        {
+          "name": "QUEUE_BACKEND",
+          "value": "memory"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudmart-__ENVIRONMENT__",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "order-service"
+        }
+      }
+    },
+    {
+      "name": "user-service",
+      "image": "__ECR_REGISTRY__/cloudmart/user-service:__IMAGE_TAG__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8003,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8003"
+        },
+        {
+          "name": "DB_BACKEND",
+          "value": "memory"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "__JWT_SECRET__"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudmart-__ENVIRONMENT__",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "user-service"
+        }
+      }
+    },
+    {
+      "name": "notification-service",
+      "image": "__ECR_REGISTRY__/cloudmart/notification-service:__IMAGE_TAG__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8004,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8004"
+        },
+        {
+          "name": "ORDER_SERVICE_URL",
+          "value": "http://127.0.0.1:8002"
+        },
+        {
+          "name": "QUEUE_BACKEND",
+          "value": "memory"
+        },
+        {
+          "name": "EMAIL_BACKEND",
+          "value": "console"
+        },
+        {
+          "name": "POLL_INTERVAL_MS",
+          "value": "5000"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudmart-__ENVIRONMENT__",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "notification-service"
+        }
+      }
+    },
+    {
+      "name": "frontend",
+      "image": "__ECR_REGISTRY__/cloudmart/frontend:__IMAGE_TAG__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "dependsOn": [
+        {
+          "containerName": "product-service",
+          "condition": "START"
+        },
+        {
+          "containerName": "order-service",
+          "condition": "START"
+        },
+        {
+          "containerName": "user-service",
+          "condition": "START"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudmart-__ENVIRONMENT__",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "frontend"
+        }
+      }
+    }
+  ]
+}
