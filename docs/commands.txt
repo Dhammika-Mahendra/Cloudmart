@@ -45,3 +45,6 @@ VALUES (
 );
 
 SELECT * FROM users;
+
+docker compose down
+docker compose up --build

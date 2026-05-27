@@ -18,6 +18,13 @@ from flask import Flask, jsonify, request, abort
 import bcrypt
 import jwt as pyjwt
 
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:  # pragma: no cover - optional dependency for postgres backend
+    psycopg2 = None
+    RealDictCursor = None
+
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
@@ -124,10 +131,155 @@ class PostgresUserStore:
     """
 
     def __init__(self):
-        raise NotImplementedError(
-            "PostgreSQL store not implemented yet. "
-            "See the assignment brief Section 3.1 for guidance."
+        if psycopg2 is None:
+            raise RuntimeError(
+                "PostgreSQL backend requires psycopg2-binary. "
+                "Uncomment it in requirements.txt and reinstall dependencies."
+            )
+
+        self.database_url = os.environ.get("DATABASE_URL")
+        self.db_host = os.environ.get("DB_HOST")
+        self.db_port = int(os.environ.get("DB_PORT", "5432"))
+        self.db_name = os.environ.get("DB_NAME")
+        self.db_user = os.environ.get("DB_USER")
+        self.db_password = os.environ.get("DB_PASSWORD")
+
+        self._ensure_schema()
+        self._seed_if_empty()
+
+    def _get_conn(self):
+        if self.database_url:
+            return psycopg2.connect(self.database_url)
+        return psycopg2.connect(
+            host=self.db_host,
+            port=self.db_port,
+            dbname=self.db_name,
+            user=self.db_user,
+            password=self.db_password,
         )
+
+    def _ensure_schema(self):
+        create_sql = """
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL,
+                address TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT
+            );
+        """
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(create_sql)
+
+    def _seed_if_empty(self):
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM users")
+                count = cur.fetchone()[0]
+                if count:
+                    return
+
+                insert_sql = """
+                    INSERT INTO users (id, email, name, password_hash, role, address, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """
+                for user in SEED_USERS:
+                    cur.execute(
+                        insert_sql,
+                        (
+                            user["id"],
+                            user["email"],
+                            user["name"],
+                            user["passwordHash"],
+                            user["role"],
+                            user.get("address", ""),
+                            user["createdAt"],
+                        ),
+                    )
+
+    def _row_to_user(self, row):
+        if row is None:
+            return None
+        return {
+            "id": row["id"],
+            "email": row["email"],
+            "name": row["name"],
+            "passwordHash": row["password_hash"],
+            "role": row["role"],
+            "address": row.get("address") or "",
+            "createdAt": row["created_at"],
+            "updatedAt": row.get("updated_at"),
+        }
+
+    def find_by_email(self, email):
+        with self._get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+                row = cur.fetchone()
+                return self._row_to_user(row)
+
+    def find_by_id(self, user_id):
+        with self._get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+                row = cur.fetchone()
+                return self._row_to_user(row)
+
+    def create(self, user_data):
+        insert_sql = """
+            INSERT INTO users (id, email, name, password_hash, role, address, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    insert_sql,
+                    (
+                        user_data["id"],
+                        user_data["email"],
+                        user_data["name"],
+                        user_data["passwordHash"],
+                        user_data["role"],
+                        user_data.get("address", ""),
+                        user_data["createdAt"],
+                    ),
+                )
+        return user_data
+
+    def update(self, user_id, data):
+        fields = []
+        values = []
+        for key, column in [("name", "name"), ("address", "address"), ("email", "email")]:
+            if key in data:
+                fields.append(f"{column} = %s")
+                values.append(data[key])
+
+        if not fields:
+            return self.find_by_id(user_id)
+
+        updated_at = datetime.utcnow().isoformat() + "Z"
+        fields.append("updated_at = %s")
+        values.append(updated_at)
+        values.append(user_id)
+
+        update_sql = f"UPDATE users SET {', '.join(fields)} WHERE id = %s"
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(update_sql, tuple(values))
+                if cur.rowcount == 0:
+                    return None
+        return self.find_by_id(user_id)
+
+    def list_all(self):
+        with self._get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM users")
+                rows = cur.fetchall()
+                return [self._row_to_user(row) for row in rows]
 
 
 def create_user_store():
