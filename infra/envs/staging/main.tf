@@ -70,7 +70,23 @@ module "ecs" {
 }
 
 # module "eks" {}
-# module "rds" {}
-# module "dynamodb" {}
+
+module "rds" {
+  source = "../../modules/rds"
+
+  name_prefix       = local.name_prefix
+  vpc_id            = module.network.vpc_id
+  subnet_ids        = module.network.private_data_subnet_ids
+  security_group_id = module.network.rds_security_group_id
+  tags              = local.common_tags
+}
+
+module "dynamodb" {
+  source = "../../modules/dynamodb"
+
+  name_prefix = local.name_prefix
+  tags        = local.common_tags
+}
+
 # module "sqs" {}
 # module "secrets" {}
