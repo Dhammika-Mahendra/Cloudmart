@@ -74,11 +74,12 @@ module "ecs" {
 module "rds" {
   source = "../../modules/rds"
 
-  name_prefix       = local.name_prefix
-  vpc_id            = module.network.vpc_id
-  subnet_ids        = module.network.private_data_subnet_ids
-  security_group_id = module.network.rds_security_group_id
-  tags              = local.common_tags
+  name_prefix           = local.name_prefix
+  vpc_id                = module.network.vpc_id
+  subnet_ids            = module.network.private_data_subnet_ids
+  security_group_id     = module.network.rds_security_group_id
+  backup_retention_days = 0
+  tags                  = local.common_tags
 }
 
 module "dynamodb" {
