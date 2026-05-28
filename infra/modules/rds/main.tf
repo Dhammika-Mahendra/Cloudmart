@@ -17,7 +17,7 @@ resource "aws_db_subnet_group" "this" {
 resource "aws_db_parameter_group" "this" {
   name        = "${var.name_prefix}-rds-pg15"
   family      = "postgres15"
-  description = "CloudMart PostgreSQL 15 — SSL enforced"
+  description = "CloudMart PostgreSQL 15 - SSL enforced"
 
   # rds.force_ssl = 1 rejects any connection that does not use SSL
   parameter {
