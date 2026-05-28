@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }
 
@@ -70,7 +74,39 @@ module "ecs" {
 }
 
 # module "eks" {}
-# module "rds" {}
-# module "dynamodb" {}
 # module "sqs" {}
 # module "secrets" {}
+
+# ─────────────────────────────────────────────
+# RDS PostgreSQL — user-service data store
+# ─────────────────────────────────────────────
+module "rds" {
+  source = "../../modules/rds"
+
+  name_prefix           = local.name_prefix
+  vpc_id                = module.network.vpc_id
+  subnet_ids            = module.network.private_data_subnet_ids
+  security_group_id     = module.network.rds_security_group_id
+  db_name               = var.rds_db_name
+  db_username           = var.rds_db_username
+  instance_class        = var.rds_instance_class
+  allocated_storage     = var.rds_allocated_storage
+  backup_retention_days = var.rds_backup_retention_days
+  multi_az              = var.rds_multi_az
+  deletion_protection   = var.rds_deletion_protection
+  skip_final_snapshot   = var.rds_skip_final_snapshot
+  tags                  = local.common_tags
+}
+
+# ─────────────────────────────────────────────
+# DynamoDB — product-service catalogue
+# ─────────────────────────────────────────────
+module "dynamodb" {
+  source = "../../modules/dynamodb"
+
+  name_prefix            = local.name_prefix
+  table_name             = var.dynamodb_table_name
+  billing_mode           = var.dynamodb_billing_mode
+  point_in_time_recovery = var.dynamodb_pitr_enabled
+  tags                   = local.common_tags
+}

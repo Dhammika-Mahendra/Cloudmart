@@ -165,21 +165,151 @@ class InMemoryStore:
 
 class DynamoDBStore:
     """
-    AWS DynamoDB adapter.
+    AWS DynamoDB adapter using boto3.
 
-    To use: set STORE_BACKEND=dynamodb and DYNAMODB_TABLE=<table-name>
+    Set STORE_BACKEND=dynamodb and DYNAMODB_TABLE=<table-name>
 
-    Students: implement each method using boto3.
-    Requires IRSA / workload identity for credentials.
+    On EKS, authentication uses IRSA (IAM Roles for Service Accounts).
+    No credentials need to be hardcoded — boto3 picks them up automatically
+    from the pod's service account token.
     """
 
     def __init__(self):
-        # TODO: import boto3; create dynamodb resource
-        # self.table = boto3.resource('dynamodb').Table(os.environ['DYNAMODB_TABLE'])
-        raise NotImplementedError(
-            "DynamoDB store not implemented yet. "
-            "See the assignment brief Section 3.3 for guidance."
+        import boto3
+        from boto3.dynamodb.conditions import Key, Attr
+        self.boto3 = boto3
+        self.Key = Key
+        self.Attr = Attr
+
+        region = os.environ.get("AWS_REGION", "ap-south-1")
+        self.table_name = os.environ["DYNAMODB_TABLE"]  # Required env var
+        dynamodb = boto3.resource("dynamodb", region_name=region)
+        self.table = dynamodb.Table(self.table_name)
+        logger.info(f"Connected to DynamoDB table: {self.table_name}")
+
+    def _to_product(self, item):
+        """Normalise DynamoDB types (Decimal → float)."""
+        from decimal import Decimal
+        result = {}
+        for k, v in item.items():
+            if isinstance(v, Decimal):
+                result[k] = float(v)
+            else:
+                result[k] = v
+        return result
+
+    def get_all(self, category=None, search=None):
+        from boto3.dynamodb.conditions import Attr
+        if category:
+            # Use the category-index GSI for efficient query
+            response = self.table.query(
+                IndexName="category-index",
+                KeyConditionExpression=self.Key("category").eq(category),
+            )
+            items = response.get("Items", [])
+        else:
+            response = self.table.scan()
+            items = response.get("Items", [])
+            # Handle pagination
+            while "LastEvaluatedKey" in response:
+                response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+                items.extend(response.get("Items", []))
+
+        products = [self._to_product(i) for i in items]
+
+        if search:
+            q = search.lower()
+            products = [
+                p for p in products
+                if q in p.get("name", "").lower() or q in p.get("description", "").lower()
+            ]
+        return products
+
+    def get_by_id(self, product_id):
+        response = self.table.get_item(Key={"id": product_id})
+        item = response.get("Item")
+        return self._to_product(item) if item else None
+
+    def create(self, data):
+        from decimal import Decimal
+        product_id = f"prod-{uuid.uuid4().hex[:6]}"
+        product = {
+            "id": product_id,
+            "name": data["name"],
+            "description": data.get("description", ""),
+            "price": Decimal(str(data["price"])),
+            "category": data.get("category", "general"),
+            "stock": int(data.get("stock", 0)),
+            "imageUrl": data.get("imageUrl", ""),
+            "createdAt": datetime.utcnow().isoformat() + "Z",
+        }
+        self.table.put_item(Item=product)
+        return self._to_product(product)
+
+    def update(self, product_id, data):
+        from decimal import Decimal
+        updatable = ["name", "description", "price", "category", "stock", "imageUrl"]
+        update_expr_parts = []
+        expr_attr_names = {}
+        expr_attr_values = {}
+
+        for key in updatable:
+            if key in data:
+                placeholder = f"#attr_{key}"
+                value_placeholder = f":val_{key}"
+                expr_attr_names[placeholder] = key
+                val = data[key]
+                if key == "price":
+                    val = Decimal(str(val))
+                expr_attr_values[value_placeholder] = val
+                update_expr_parts.append(f"{placeholder} = {value_placeholder}")
+
+        if not update_expr_parts:
+            return self.get_by_id(product_id)
+
+        expr_attr_names["#attr_updatedAt"] = "updatedAt"
+        expr_attr_values[":val_updatedAt"] = datetime.utcnow().isoformat() + "Z"
+        update_expr_parts.append("#attr_updatedAt = :val_updatedAt")
+
+        response = self.table.update_item(
+            Key={"id": product_id},
+            UpdateExpression="SET " + ", ".join(update_expr_parts),
+            ExpressionAttributeNames=expr_attr_names,
+            ExpressionAttributeValues=expr_attr_values,
+            ConditionExpression="attribute_exists(id)",  # 404 if not found
+            ReturnValues="ALL_NEW",
         )
+        return self._to_product(response["Attributes"])
+
+    def delete(self, product_id):
+        try:
+            self.table.delete_item(
+                Key={"id": product_id},
+                ConditionExpression="attribute_exists(id)",
+            )
+            return True
+        except self.table.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
+    def check_stock(self, product_id, quantity):
+        product = self.get_by_id(product_id)
+        if not product:
+            return False
+        return product.get("stock", 0) >= quantity
+
+    def decrement_stock(self, product_id, quantity):
+        from decimal import Decimal
+        try:
+            self.table.update_item(
+                Key={"id": product_id},
+                UpdateExpression="SET stock = stock - :q",
+                ConditionExpression="attribute_exists(id) AND stock >= :q",
+                ExpressionAttributeValues={":q": Decimal(str(quantity))},
+            )
+            return True
+        except self.table.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
 
 
 class FirestoreStore:

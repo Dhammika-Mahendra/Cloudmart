@@ -52,3 +52,47 @@ output "ecs_frontend_port" {
   description = "Temporary public frontend port."
   value       = module.ecs.frontend_port
 }
+
+# ─────────────────────────────────────────────
+# RDS outputs
+# ─────────────────────────────────────────────
+
+output "rds_endpoint" {
+  description = "RDS PostgreSQL endpoint (host:port). Use as DB_HOST in user-service ConfigMap."
+  value       = module.rds.db_endpoint
+}
+
+output "rds_db_name" {
+  description = "Database name inside the RDS instance."
+  value       = module.rds.db_name
+}
+
+output "rds_secret_arn" {
+  description = "Secrets Manager secret ARN holding full DB credentials. Reference in user-service IRSA policy."
+  value       = module.rds.secret_arn
+}
+
+output "rds_secret_name" {
+  description = "Secrets Manager secret name. Pass to External Secrets Operator or Secrets Store CSI."
+  value       = module.rds.secret_name
+}
+
+# ─────────────────────────────────────────────
+# DynamoDB outputs
+# ─────────────────────────────────────────────
+
+output "dynamodb_table_name" {
+  description = "DynamoDB table name. Set as DYNAMODB_TABLE env var in product-service."
+  value       = module.dynamodb.table_name
+}
+
+output "dynamodb_table_arn" {
+  description = "DynamoDB table ARN."
+  value       = module.dynamodb.table_arn
+}
+
+output "dynamodb_product_service_policy_arn" {
+  description = "IAM policy ARN to attach to the product-service IRSA role."
+  value       = module.dynamodb.product_service_policy_arn
+}
+

@@ -10,6 +10,7 @@ Data Store:
 
 import os
 import uuid
+import json
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
@@ -112,22 +113,140 @@ class InMemoryUserStore:
 
 class PostgresUserStore:
     """
-    PostgreSQL adapter — students implement this for the assignment.
+    PostgreSQL adapter using psycopg2.
 
-    Set DB_BACKEND=postgres and provide:
-      DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-    or
-      DATABASE_URL (connection string)
+    Set DB_BACKEND=postgres and either:
+      - DATABASE_URL (full connection string), OR
+      - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 
-    Use psycopg2 or SQLAlchemy. Credentials should come from
-    your cloud provider's secret management service via workload identity.
+    When running on EKS with IRSA, credentials are fetched automatically
+    from AWS Secrets Manager (secret name set via SECRETS_MANAGER_SECRET_NAME).
     """
 
     def __init__(self):
-        raise NotImplementedError(
-            "PostgreSQL store not implemented yet. "
-            "See the assignment brief Section 3.1 for guidance."
+        import psycopg2
+        import psycopg2.extras
+        self.psycopg2 = psycopg2
+        self.extras = psycopg2.extras
+        self.conn = self._connect()
+        self._ensure_table()
+
+    def _get_credentials_from_secrets_manager(self):
+        """Fetch DB credentials from AWS Secrets Manager via IRSA workload identity."""
+        import boto3
+        secret_name = os.environ.get("SECRETS_MANAGER_SECRET_NAME")
+        if not secret_name:
+            return None
+        try:
+            region = os.environ.get("AWS_REGION", "ap-south-1")
+            client = boto3.client("secretsmanager", region_name=region)
+            response = client.get_secret_value(SecretId=secret_name)
+            return json.loads(response["SecretString"])
+        except Exception as e:
+            logger.warning(f"Could not fetch credentials from Secrets Manager: {e}")
+            return None
+
+    def _connect(self):
+        """Build a psycopg2 connection, preferring Secrets Manager over env vars."""
+        # Try Secrets Manager first (cloud deployment with IRSA)
+        creds = self._get_credentials_from_secrets_manager()
+        if creds:
+            dsn = (
+                f"host={creds['host']} "
+                f"port={creds.get('port', 5432)} "
+                f"dbname={creds['dbname']} "
+                f"user={creds['username']} "
+                f"password={creds['password']} "
+                f"sslmode=require"  # Assignment: enforce SSL in transit
+            )
+        elif os.environ.get("DATABASE_URL"):
+            dsn = os.environ["DATABASE_URL"]
+        else:
+            dsn = (
+                f"host={os.environ.get('DB_HOST', 'localhost')} "
+                f"port={os.environ.get('DB_PORT', '5432')} "
+                f"dbname={os.environ.get('DB_NAME', 'cloudmart')} "
+                f"user={os.environ.get('DB_USER', 'cloudmartadmin')} "
+                f"password={os.environ.get('DB_PASSWORD', '')} "
+                f"sslmode=require"
+            )
+        conn = self.psycopg2.connect(dsn)
+        conn.autocommit = True
+        logger.info("Connected to PostgreSQL")
+        return conn
+
+    def _cursor(self):
+        """Return a DictCursor, reconnecting if the connection dropped."""
+        try:
+            self.conn.isolation_level  # Ping
+        except Exception:
+            logger.warning("PostgreSQL connection lost — reconnecting")
+            self.conn = self._connect()
+        return self.conn.cursor(cursor_factory=self.extras.RealDictCursor)
+
+    def _ensure_table(self):
+        """Create the users table if it doesn't exist yet (idempotent)."""
+        with self._cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id            TEXT PRIMARY KEY,
+                    email         TEXT UNIQUE NOT NULL,
+                    name          TEXT NOT NULL,
+                    "passwordHash" TEXT NOT NULL,
+                    role          TEXT NOT NULL DEFAULT 'customer',
+                    address       TEXT DEFAULT '',
+                    "createdAt"   TEXT NOT NULL,
+                    "updatedAt"   TEXT
+                )
+            """)
+        logger.info("users table ready")
+
+    def find_by_email(self, email):
+        with self._cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def find_by_id(self, user_id):
+        with self._cursor() as cur:
+            cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def create(self, user_data):
+        with self._cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (id, email, name, "passwordHash", role, address, "createdAt")
+                VALUES (%(id)s, %(email)s, %(name)s, %(passwordHash)s, %(role)s, %(address)s, %(createdAt)s)
+                RETURNING *
+                """,
+                user_data,
+            )
+            return dict(cur.fetchone())
+
+    def update(self, user_id, data):
+        fields = {k: data[k] for k in ["name", "address", "email"] if k in data}
+        if not fields:
+            return self.find_by_id(user_id)
+        fields["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+        fields["id"] = user_id
+        set_clause = ", ".join(
+            f'"{k}" = %({k})s' if k in ("updatedAt",) else f"{k} = %({k})s"
+            for k in fields if k != "id"
         )
+        with self._cursor() as cur:
+            cur.execute(
+                f'UPDATE users SET {set_clause} WHERE id = %(id)s RETURNING *',
+                fields,
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def list_all(self):
+        with self._cursor() as cur:
+            cur.execute("SELECT * FROM users ORDER BY \"createdAt\"")
+            return [dict(r) for r in cur.fetchall()]
 
 
 def create_user_store():
