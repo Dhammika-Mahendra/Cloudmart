@@ -1,0 +1,88 @@
+name: Terraform Checks
+
+on:
+  push:
+    branches:
+      - main
+      - dev-ramosh99
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-*.yml"
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-*.yml"
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  fmt:
+    name: Terraform Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive infra
+
+  validate-bootstrap:
+    name: Validate Bootstrap
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/bootstrap
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+  validate-environments:
+    name: Validate Environments
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - staging
+          - prod
+    defaults:
+      run:
+        working-directory: infra/envs/${{ matrix.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
