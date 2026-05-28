@@ -77,12 +77,12 @@ resource "aws_db_instance" "this" {
   identifier = "${var.name_prefix}-postgres"
 
   # Engine
-  engine               = "postgres"
-  engine_version       = var.engine_version
-  instance_class       = var.instance_class
-  allocated_storage    = var.allocated_storage
-  storage_type         = "gp3"
-  storage_encrypted    = true # Encryption at rest — assignment [M]
+  engine            = "postgres"
+  engine_version    = var.engine_version
+  instance_class    = var.instance_class
+  allocated_storage = var.allocated_storage
+  storage_type      = "gp3"
+  storage_encrypted = true # Encryption at rest — assignment [M]
 
   # Credentials
   db_name  = var.db_name
@@ -98,11 +98,11 @@ resource "aws_db_instance" "this" {
   parameter_group_name = aws_db_parameter_group.this.name
 
   # Backup & recovery — assignment requires 7-day retention + PITR
-  backup_retention_period   = var.backup_retention_days
-  backup_window             = "02:00-03:00" # UTC — low-traffic window
-  maintenance_window        = "Mon:03:00-Mon:04:00"
-  copy_tags_to_snapshot     = true
-  delete_automated_backups  = false
+  backup_retention_period  = var.backup_retention_days
+  backup_window            = "02:00-03:00" # UTC — low-traffic window
+  maintenance_window       = "Mon:03:00-Mon:04:00"
+  copy_tags_to_snapshot    = true
+  delete_automated_backups = false
 
   # High availability
   multi_az = var.multi_az
