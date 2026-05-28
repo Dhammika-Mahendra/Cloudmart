@@ -121,10 +121,15 @@ class PostgresUserStore:
     """
     PostgreSQL adapter — students implement this for the assignment.
 
-    Set DB_BACKEND=postgres and provide:
-      DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-    or
-      DATABASE_URL (connection string)
+        Set DB_BACKEND=postgres and provide:
+            DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+        or
+            DATABASE_URL (connection string)
+
+        Optional SSL settings for AWS RDS:
+            DB_SSLMODE (disable|allow|prefer|require|verify-ca|verify-full)
+            DB_SSLROOTCERT (path to rds-combined-ca-bundle.pem)
+            DB_CONNECT_TIMEOUT (seconds)
 
     Use psycopg2 or SQLAlchemy. Credentials should come from
     your cloud provider's secret management service via workload identity.
@@ -143,19 +148,30 @@ class PostgresUserStore:
         self.db_name = os.environ.get("DB_NAME")
         self.db_user = os.environ.get("DB_USER")
         self.db_password = os.environ.get("DB_PASSWORD")
+        self.db_sslmode = os.environ.get("DB_SSLMODE", "require")
+        self.db_sslrootcert = os.environ.get("DB_SSLROOTCERT")
+        self.db_connect_timeout = int(os.environ.get("DB_CONNECT_TIMEOUT", "10"))
 
         self._ensure_schema()
         self._seed_if_empty()
 
     def _get_conn(self):
+        conn_kwargs = {
+            "connect_timeout": self.db_connect_timeout,
+            "sslmode": self.db_sslmode,
+        }
+        if self.db_sslrootcert:
+            conn_kwargs["sslrootcert"] = self.db_sslrootcert
+
         if self.database_url:
-            return psycopg2.connect(self.database_url)
+            return psycopg2.connect(self.database_url, **conn_kwargs)
         return psycopg2.connect(
             host=self.db_host,
             port=self.db_port,
             dbname=self.db_name,
             user=self.db_user,
             password=self.db_password,
+            **conn_kwargs,
         )
 
     def _ensure_schema(self):

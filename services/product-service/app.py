@@ -12,6 +12,7 @@ import os
 import uuid
 import logging
 from datetime import datetime
+from decimal import Decimal
 from flask import Flask, jsonify, request, abort
 
 # ---------------------------------------------------------------------------
@@ -174,12 +175,132 @@ class DynamoDBStore:
     """
 
     def __init__(self):
-        # TODO: import boto3; create dynamodb resource
-        # self.table = boto3.resource('dynamodb').Table(os.environ['DYNAMODB_TABLE'])
-        raise NotImplementedError(
-            "DynamoDB store not implemented yet. "
-            "See the assignment brief Section 3.3 for guidance."
+        import boto3
+
+        table_name = os.environ.get("DYNAMODB_TABLE")
+        if not table_name:
+            raise ValueError("DYNAMODB_TABLE env var is required for DynamoDBStore")
+        region = os.environ.get("AWS_REGION")
+        if region:
+            self.table = boto3.resource("dynamodb", region_name=region).Table(table_name)
+        else:
+            self.table = boto3.resource("dynamodb").Table(table_name)
+
+    def _normalize_item(self, item):
+        if not item:
+            return None
+        normalized = {}
+        for key, value in item.items():
+            if isinstance(value, Decimal):
+                normalized[key] = int(value) if value % 1 == 0 else float(value)
+            else:
+                normalized[key] = value
+        return normalized
+
+    def _scan_all(self):
+        items = []
+        response = self.table.scan()
+        items.extend(response.get("Items", []))
+        while "LastEvaluatedKey" in response:
+            response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            items.extend(response.get("Items", []))
+        return items
+
+    def get_all(self, category=None, search=None):
+        items = [self._normalize_item(i) for i in self._scan_all()]
+        results = [i for i in items if i is not None]
+        if category:
+            results = [p for p in results if p.get("category") == category]
+        if search:
+            q = search.lower()
+            results = [
+                p
+                for p in results
+                if q in (p.get("name", "").lower())
+                or q in (p.get("description", "").lower())
+            ]
+        return results
+
+    def get_by_id(self, product_id):
+        response = self.table.get_item(Key={"id": product_id})
+        return self._normalize_item(response.get("Item"))
+
+    def create(self, data):
+        product_id = f"prod-{uuid.uuid4().hex[:6]}"
+        product = {
+            "id": product_id,
+            "name": data["name"],
+            "description": data.get("description", ""),
+            "price": Decimal(str(data["price"])),
+            "category": data.get("category", "general"),
+            "stock": int(data.get("stock", 0)),
+            "imageUrl": data.get("imageUrl", ""),
+            "createdAt": datetime.utcnow().isoformat() + "Z",
+        }
+        self.table.put_item(Item=product)
+        return self._normalize_item(product)
+
+    def update(self, product_id, data):
+        fields = {k: data[k] for k in ["name", "description", "price", "category", "stock", "imageUrl"] if k in data}
+        if not fields:
+            return self.get_by_id(product_id)
+        expression_parts = []
+        attribute_values = {":updatedAt": datetime.utcnow().isoformat() + "Z"}
+        attribute_names = {}
+        for key, value in fields.items():
+            safe_key = f"#{key}"
+            expression_parts.append(f"{safe_key} = :{key}")
+            attribute_names[safe_key] = key
+            if key == "price":
+                attribute_values[f":{key}"] = Decimal(str(value))
+            elif key == "stock":
+                attribute_values[f":{key}"] = int(value)
+            else:
+                attribute_values[f":{key}"] = value
+        expression_parts.append("#updatedAt = :updatedAt")
+        attribute_names["#updatedAt"] = "updatedAt"
+
+        try:
+            response = self.table.update_item(
+                Key={"id": product_id},
+                UpdateExpression="SET " + ", ".join(expression_parts),
+                ExpressionAttributeNames=attribute_names,
+                ExpressionAttributeValues=attribute_values,
+                ConditionExpression="attribute_exists(id)",
+                ReturnValues="ALL_NEW",
+            )
+        except self.table.meta.client.exceptions.ConditionalCheckFailedException:
+            return None
+
+        return self._normalize_item(response.get("Attributes"))
+
+    def delete(self, product_id):
+        response = self.table.delete_item(
+            Key={"id": product_id},
+            ReturnValues="ALL_OLD",
         )
+        return "Attributes" in response
+
+    def check_stock(self, product_id, quantity):
+        product = self.get_by_id(product_id)
+        if not product:
+            return False
+        return int(product.get("stock", 0)) >= quantity
+
+    def decrement_stock(self, product_id, quantity):
+        if quantity <= 0:
+            return False
+        try:
+            self.table.update_item(
+                Key={"id": product_id},
+                UpdateExpression="SET #stock = #stock - :qty",
+                ExpressionAttributeNames={"#stock": "stock"},
+                ExpressionAttributeValues={":qty": int(quantity)},
+                ConditionExpression="attribute_exists(id) AND #stock >= :qty",
+            )
+            return True
+        except self.table.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
 
 
 class FirestoreStore:

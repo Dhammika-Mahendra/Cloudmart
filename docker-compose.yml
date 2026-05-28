@@ -13,6 +13,8 @@ services:
       - PORT=8001
       - FLASK_DEBUG=true
       - STORE_BACKEND=memory          # Change to dynamodb|firestore|cosmosdb for cloud
+      - DYNAMODB_TABLE=cloudmart-products
+      - AWS_REGION=us-east-1
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 10s
@@ -53,13 +55,15 @@ services:
     environment:
       - PORT=8003
       - FLASK_DEBUG=true
-      - DB_BACKEND=postgres              # Change to postgres for cloud
+      - DB_BACKEND=postgres # Change to postgres for cloud
       - JWT_SECRET=cloudmart-dev-secret-change-in-production
       - DB_HOST=host.docker.internal
       - DB_PORT=5432
       - DB_NAME=mydb
       - DB_USER=admin
       - DB_PASSWORD=admin123
+      - DB_SSLMODE=require  # AWS RDS SSL settings
+      - DB_CONNECT_TIMEOUT=10 # DB_SSLROOTCERT=/path/to/rds-combined-ca-bundle.pem
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
       interval: 10s
