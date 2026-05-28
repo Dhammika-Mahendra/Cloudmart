@@ -48,3 +48,32 @@ SELECT * FROM users;
 
 docker compose down
 docker compose up --build
+
+========================================
+Kube kind running
+=======================================
+
+kubectl kustomize k8s
+
+kind create cluster --config kind-cluster.yaml
+
+docker build -t cloudmart-product-service:local services/product-service
+docker build -t cloudmart-order-service:local services/order-service
+docker build -t cloudmart-user-service:local services/user-service
+docker build -t cloudmart-notification-service:local services/notification-service
+docker build -t cloudmart-frontend:local services/frontend
+
+kind load docker-image cloudmart-product-service:local
+kind load docker-image cloudmart-order-service:local
+kind load docker-image cloudmart-user-service:local
+kind load docker-image cloudmart-notification-service:local
+kind load docker-image cloudmart-frontend:local
+
+kubectl apply -k k8s
+kubectl get pods -o wide
+kubectl port-forward svc/frontend 3000:80
+
+when changes:-
+    kubectl apply -k k8s
+    kubectl rollout restart deployment/user-service
+    kubectl logs deployment/user-service

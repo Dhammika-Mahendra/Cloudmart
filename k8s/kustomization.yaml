@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - product-service.yaml
+  - order-service.yaml
+  - user-service.yaml
+  - notification-service.yaml
+  - frontend-service.yaml
