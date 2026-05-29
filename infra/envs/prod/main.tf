@@ -110,3 +110,37 @@ module "dynamodb" {
   point_in_time_recovery = var.dynamodb_pitr_enabled
   tags                   = local.common_tags
 }
+
+resource "aws_security_group_rule" "rds_from_ecs" {
+  type                     = "ingress"
+  description              = "PostgreSQL from ECS task"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = module.ecs.service_security_group_id
+  security_group_id        = module.network.rds_security_group_id
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_product_dynamodb" {
+  role       = module.ecs.task_role_name
+  policy_arn = module.dynamodb.product_service_policy_arn
+}
+
+resource "aws_iam_role_policy" "ecs_read_rds_secret" {
+  name = "${local.name_prefix}-ecs-read-rds-secret"
+  role = module.ecs.task_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = module.rds.secret_arn
+      }
+    ]
+  })
+}

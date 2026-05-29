@@ -199,6 +199,15 @@ class PostgresUserStore:
                     "updatedAt"   TEXT
                 )
             """)
+            for user in SEED_USERS:
+                cur.execute(
+                    """
+                    INSERT INTO users (id, email, name, "passwordHash", role, address, "createdAt")
+                    VALUES (%(id)s, %(email)s, %(name)s, %(passwordHash)s, %(role)s, %(address)s, %(createdAt)s)
+                    ON CONFLICT (id) DO NOTHING
+                    """,
+                    user,
+                )
         logger.info("users table ready")
 
     def find_by_email(self, email):

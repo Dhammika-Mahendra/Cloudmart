@@ -48,6 +48,16 @@ output "ecs_task_role_arn" {
   value       = module.ecs.task_role_arn
 }
 
+output "dynamodb_products_table_name" {
+  description = "Products table used by product-service."
+  value       = module.dynamodb.table_name
+}
+
+output "rds_secret_name" {
+  description = "Secrets Manager secret name used by user-service."
+  value       = module.rds.secret_name
+}
+
 output "ecs_frontend_port" {
   description = "Temporary public frontend port."
   value       = module.ecs.frontend_port
