@@ -24,7 +24,11 @@
         },
         {
           "name": "STORE_BACKEND",
-          "value": "memory"
+          "value": "dynamodb"
+        },
+        {
+          "name": "DYNAMODB_TABLE",
+          "value": "__DYNAMODB_TABLE__"
         }
       ],
       "logConfiguration": {
@@ -86,7 +90,11 @@
         },
         {
           "name": "DB_BACKEND",
-          "value": "memory"
+          "value": "postgres"
+        },
+        {
+          "name": "SECRETS_MANAGER_SECRET_NAME",
+          "value": "__RDS_SECRET_NAME__"
         },
         {
           "name": "JWT_SECRET",

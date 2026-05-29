@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }
 
@@ -78,7 +82,9 @@ module "rds" {
   vpc_id                = module.network.vpc_id
   subnet_ids            = module.network.private_data_subnet_ids
   security_group_id     = module.network.rds_security_group_id
-  backup_retention_days = 0
+  backup_retention_days = 7
+  deletion_protection   = false
+  skip_final_snapshot   = true
   tags                  = local.common_tags
 }
 
@@ -86,7 +92,42 @@ module "dynamodb" {
   source = "../../modules/dynamodb"
 
   name_prefix = local.name_prefix
+  table_name  = "${local.name_prefix}-products"
   tags        = local.common_tags
+}
+
+resource "aws_security_group_rule" "rds_from_ecs" {
+  type                     = "ingress"
+  description              = "PostgreSQL from ECS task"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = module.ecs.service_security_group_id
+  security_group_id        = module.network.rds_security_group_id
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_product_dynamodb" {
+  role       = module.ecs.task_role_name
+  policy_arn = module.dynamodb.product_service_policy_arn
+}
+
+resource "aws_iam_role_policy" "ecs_read_rds_secret" {
+  name = "${local.name_prefix}-ecs-read-rds-secret"
+  role = module.ecs.task_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = module.rds.secret_arn
+      }
+    ]
+  })
 }
 
 # module "sqs" {}

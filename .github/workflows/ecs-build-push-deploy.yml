@@ -128,13 +128,19 @@ jobs:
 
       - name: Render ECS task definition
         run: |
+          DEPLOY_ENV="${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}"
+          TEAM_ID="${{ vars.CLOUDMART_TEAM_ID || '13' }}"
+          DYNAMODB_TABLE="cloudmart-${DEPLOY_ENV}-${TEAM_ID}-products"
+          RDS_SECRET_NAME="cloudmart-${DEPLOY_ENV}-${TEAM_ID}/rds/master-password"
           sed \
             -e "s|__AWS_REGION__|${AWS_REGION}|g" \
-            -e "s|__ENVIRONMENT__|${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}|g" \
+            -e "s|__ENVIRONMENT__|${DEPLOY_ENV}|g" \
             -e "s|__ECR_REGISTRY__|${{ needs.build-push.outputs.registry }}|g" \
             -e "s|__IMAGE_TAG__|${{ needs.build-push.outputs.image-tag }}|g" \
             -e "s|__ECS_TASK_EXECUTION_ROLE_ARN__|${{ secrets.ECS_TASK_EXECUTION_ROLE_ARN }}|g" \
             -e "s|__ECS_TASK_ROLE_ARN__|${{ secrets.ECS_TASK_ROLE_ARN }}|g" \
+            -e "s|__DYNAMODB_TABLE__|${DYNAMODB_TABLE}|g" \
+            -e "s|__RDS_SECRET_NAME__|${RDS_SECRET_NAME}|g" \
             -e "s|__JWT_SECRET__|${{ secrets.JWT_SECRET }}|g" \
             ecs/task-definition.json > task-definition.rendered.json
 
