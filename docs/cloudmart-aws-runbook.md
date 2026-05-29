@@ -667,6 +667,26 @@ EKS worker nodes
 Application Load Balancer
 ```
 
+## Free Tier RDS Backup Limitation
+
+The staging RDS module currently uses:
+
+```hcl
+backup_retention_days = 0
+```
+
+This is because the current AWS account returned:
+
+```text
+FreeTierRestrictionError: The specified backup retention period exceeds the maximum available to free tier customers.
+```
+
+For the final assignment requirement, set RDS backup retention to `7` on an AWS account/plan that allows automated backups:
+
+```hcl
+backup_retention_days = 7
+```
+
 ## Current Deployment Architecture
 
 Temporary ECS architecture:
