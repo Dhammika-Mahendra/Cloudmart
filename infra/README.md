@@ -39,17 +39,16 @@ The network module creates:
 - security groups for ALB, EKS nodes, RDS, and bastion
 - free gateway VPC endpoints for S3 and DynamoDB
 
-By default, these cost controls are used:
-
-```hcl
-enable_nat_gateway = false
-enable_flow_logs   = false
-```
-
-NAT Gateway is useful later for private subnet internet egress, but it has an hourly charge. Flow Logs are useful for assignment evidence, but CloudWatch log ingestion/storage can cost money. Turn them on only when needed:
+By default, EKS environments enable NAT Gateway because private worker nodes need outbound access to pull images and call AWS APIs:
 
 ```hcl
 enable_nat_gateway = true
+enable_flow_logs   = false
+```
+
+NAT Gateway has an hourly charge. Later, interface VPC endpoints for ECR, STS, CloudWatch Logs, and Secrets Manager can reduce NAT dependency. Flow Logs are useful for assignment evidence, but CloudWatch log ingestion/storage can cost money. Turn them on only when needed:
+
+```hcl
 enable_flow_logs   = true
 ```
 

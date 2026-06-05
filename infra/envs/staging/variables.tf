@@ -40,9 +40,9 @@ variable "az_count" {
 }
 
 variable "enable_nat_gateway" {
-  description = "Create one NAT Gateway. Keep false for lowest cost; enable later when private workloads need internet egress."
+  description = "Create one NAT Gateway. Required for private EKS worker nodes unless ECR/STS/Logs/Secrets Manager interface endpoints are added."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_gateway_endpoints" {
@@ -115,4 +115,28 @@ variable "eks_node_disk_size" {
   description = "EKS worker node root disk size in GiB."
   type        = number
   default     = 30
+}
+
+variable "ses_from_email" {
+  description = "SES sender email identity for CloudMart notifications."
+  type        = string
+  default     = "noreply@cloudmart.example"
+}
+
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm notifications."
+  type        = string
+  default     = "yasiram447@gmail.com"
+}
+
+variable "enable_guardduty" {
+  description = "Enable GuardDuty threat detection."
+  type        = bool
+  default     = true
+}
+
+variable "enable_waf" {
+  description = "Create WAF for ALB Ingress."
+  type        = bool
+  default     = true
 }

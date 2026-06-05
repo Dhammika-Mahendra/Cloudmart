@@ -130,9 +130,8 @@ Required repository/environment secrets:
 |--------|---------|
 | `AWS_ROLE_TO_ASSUME` | IAM role used by GitHub Actions through OIDC |
 | `JWT_SECRET` | JWT signing secret injected into `user-service` |
-| `SQS_QUEUE_URL` | SQS queue URL for order events once the queue module is added |
-| `ORDER_SERVICE_IRSA_ROLE_ARN` | IRSA role for order-service SQS access, until Terraform creates it |
-| `NOTIFICATION_SERVICE_IRSA_ROLE_ARN` | IRSA role for notification-service SQS/SES access, until Terraform creates it |
+
+The workflow reads SQS queue URL, SES sender, WAF ARN, and IRSA role ARNs from Terraform outputs.
 
 Useful repository/environment variables:
 
@@ -143,10 +142,7 @@ Useful repository/environment variables:
 | `TF_LOCK_TABLE` | `cloudmart-13-terraform-locks` | Terraform lock table |
 | `CLOUDMART_TEAM_ID` | `13` | Team ID used in names |
 | `CLOUDMART_OWNER_EMAIL` | `yasiram447@gmail.com` | Cost tag owner |
-| `FROM_EMAIL` | `noreply@cloudmart.example` | Notification sender address |
-
-Cluster prerequisites not installed by this workflow yet:
+Cluster add-ons installed by `eks-build-push-deploy.yml`:
 
 - AWS Load Balancer Controller, required for the ALB Ingress
 - Metrics Server, required for HPA CPU metrics
-- SQS/SES Terraform and real service adapters for complete order email flow

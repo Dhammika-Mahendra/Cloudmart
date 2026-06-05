@@ -170,10 +170,17 @@ jobs:
           jq -r 'keys[]' tfoutputs.json
 
           EKS_CLUSTER_NAME="$(jq -er '.eks_cluster_name.value // empty' tfoutputs.json)"
+          VPC_ID="$(jq -er '.vpc_id.value // empty' tfoutputs.json)"
           DYNAMODB_TABLE_NAME="$(jq -er '.dynamodb_table_name.value // .dynamodb_products_table_name.value // empty' tfoutputs.json)"
           RDS_SECRET_NAME="$(jq -er '.rds_secret_name.value // empty' tfoutputs.json)"
+          SQS_QUEUE_URL="$(jq -er '.sqs_queue_url.value // empty' tfoutputs.json)"
+          SES_FROM_EMAIL="$(jq -er '.ses_from_email.value // empty' tfoutputs.json)"
+          WAF_WEB_ACL_ARN="$(jq -r '.waf_web_acl_arn.value // ""' tfoutputs.json)"
+          ALB_CONTROLLER_ROLE_ARN="$(jq -er '.aws_load_balancer_controller_role_arn.value // empty' tfoutputs.json)"
           PRODUCT_SERVICE_ROLE_ARN="$(jq -r '.eks_service_account_role_arns.value["product-service"] // ""' tfoutputs.json)"
+          ORDER_SERVICE_ROLE_ARN="$(jq -r '.eks_service_account_role_arns.value["order-service"] // ""' tfoutputs.json)"
           USER_SERVICE_ROLE_ARN="$(jq -r '.eks_service_account_role_arns.value["user-service"] // ""' tfoutputs.json)"
+          NOTIFICATION_SERVICE_ROLE_ARN="$(jq -r '.eks_service_account_role_arns.value["notification-service"] // ""' tfoutputs.json)"
 
           if [ -z "${EKS_CLUSTER_NAME}" ] || [ "${EKS_CLUSTER_NAME}" = "null" ]; then
             echo "::error::Terraform output eks_cluster_name is missing. Run the Terraform Environment workflow with action=apply for ${{ steps.env.outputs.deploy_env }} before deploying to EKS."
@@ -181,10 +188,17 @@ jobs:
           fi
 
           echo "eks_cluster_name=${EKS_CLUSTER_NAME}" >> "$GITHUB_OUTPUT"
+          echo "vpc_id=${VPC_ID}" >> "$GITHUB_OUTPUT"
           echo "dynamodb_table_name=${DYNAMODB_TABLE_NAME}" >> "$GITHUB_OUTPUT"
           echo "rds_secret_name=${RDS_SECRET_NAME}" >> "$GITHUB_OUTPUT"
+          echo "sqs_queue_url=${SQS_QUEUE_URL}" >> "$GITHUB_OUTPUT"
+          echo "ses_from_email=${SES_FROM_EMAIL}" >> "$GITHUB_OUTPUT"
+          echo "waf_web_acl_arn=${WAF_WEB_ACL_ARN}" >> "$GITHUB_OUTPUT"
+          echo "alb_controller_role_arn=${ALB_CONTROLLER_ROLE_ARN}" >> "$GITHUB_OUTPUT"
           echo "product_service_role_arn=${PRODUCT_SERVICE_ROLE_ARN}" >> "$GITHUB_OUTPUT"
+          echo "order_service_role_arn=${ORDER_SERVICE_ROLE_ARN}" >> "$GITHUB_OUTPUT"
           echo "user_service_role_arn=${USER_SERVICE_ROLE_ARN}" >> "$GITHUB_OUTPUT"
+          echo "notification_service_role_arn=${NOTIFICATION_SERVICE_ROLE_ARN}" >> "$GITHUB_OUTPUT"
 
       - name: Configure kubectl for EKS
         run: |
@@ -192,19 +206,48 @@ jobs:
             --region "${AWS_REGION}" \
             --name "${{ steps.tfout.outputs.eks_cluster_name }}"
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Install cluster add-ons
+        run: |
+          helm repo add eks https://aws.github.io/eks-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+          helm repo update
+
+          helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+            --namespace kube-system \
+            --set clusterName="${{ steps.tfout.outputs.eks_cluster_name }}" \
+            --set region="${AWS_REGION}" \
+            --set vpcId="${{ steps.tfout.outputs.vpc_id }}" \
+            --set serviceAccount.create=true \
+            --set serviceAccount.name=aws-load-balancer-controller \
+            --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="${{ steps.tfout.outputs.alb_controller_role_arn }}" \
+            --wait \
+            --timeout 10m
+
+          helm upgrade --install metrics-server metrics-server/metrics-server \
+            --namespace kube-system \
+            --set args="{--kubelet-insecure-tls}" \
+            --wait \
+            --timeout 5m
+
       - name: Render Kubernetes manifests
         env:
           DEPLOY_ENV: ${{ steps.env.outputs.deploy_env }}
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           PRODUCT_SERVICE_ROLE_ARN: ${{ steps.tfout.outputs.product_service_role_arn }}
+          ORDER_SERVICE_ROLE_ARN: ${{ steps.tfout.outputs.order_service_role_arn }}
           USER_SERVICE_ROLE_ARN: ${{ steps.tfout.outputs.user_service_role_arn }}
-          ORDER_SERVICE_ROLE_ARN: ${{ secrets.ORDER_SERVICE_IRSA_ROLE_ARN }}
-          NOTIFICATION_SERVICE_ROLE_ARN: ${{ secrets.NOTIFICATION_SERVICE_IRSA_ROLE_ARN }}
+          NOTIFICATION_SERVICE_ROLE_ARN: ${{ steps.tfout.outputs.notification_service_role_arn }}
           DYNAMODB_TABLE: ${{ steps.tfout.outputs.dynamodb_table_name }}
           RDS_SECRET_NAME: ${{ steps.tfout.outputs.rds_secret_name }}
-          SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
+          SQS_QUEUE_URL: ${{ steps.tfout.outputs.sqs_queue_url }}
+          WAF_WEB_ACL_ARN: ${{ steps.tfout.outputs.waf_web_acl_arn }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          FROM_EMAIL: ${{ vars.FROM_EMAIL || 'noreply@cloudmart.example' }}
+          FROM_EMAIL: ${{ steps.tfout.outputs.ses_from_email }}
         run: |
           cp -R k8s/base k8s/rendered
 
@@ -217,6 +260,7 @@ jobs:
           ORDER_SERVICE_ROLE_ARN="${ORDER_SERVICE_ROLE_ARN:-REPLACE_WITH_ORDER_SERVICE_IRSA_ROLE_ARN}"
           NOTIFICATION_SERVICE_ROLE_ARN="${NOTIFICATION_SERVICE_ROLE_ARN:-REPLACE_WITH_NOTIFICATION_SERVICE_IRSA_ROLE_ARN}"
           SQS_QUEUE_URL="${SQS_QUEUE_URL:-REPLACE_WITH_SQS_QUEUE_URL}"
+          WAF_WEB_ACL_ARN="${WAF_WEB_ACL_ARN:-REPLACE_WITH_WAF_WEB_ACL_ARN}"
           JWT_SECRET="${JWT_SECRET:-REPLACE_WITH_STRONG_JWT_SECRET}"
 
           find k8s/rendered -type f -name "*.yaml" -exec sed -i \
@@ -232,6 +276,7 @@ jobs:
             -e "s|REPLACE_WITH_DYNAMODB_TABLE_NAME|${DYNAMODB_TABLE}|g" \
             -e "s|REPLACE_WITH_RDS_SECRET_NAME|${RDS_SECRET_NAME}|g" \
             -e "s|REPLACE_WITH_SQS_QUEUE_URL|${SQS_QUEUE_URL}|g" \
+            -e "s|REPLACE_WITH_WAF_WEB_ACL_ARN|${WAF_WEB_ACL_ARN}|g" \
             -e "s|REPLACE_WITH_STRONG_JWT_SECRET|${JWT_SECRET}|g" \
             -e "s|noreply@cloudmart.example|${FROM_EMAIL}|g" \
             {} +
@@ -255,3 +300,23 @@ jobs:
           kubectl rollout status deployment/order-service -n "${NAMESPACE}" --timeout=180s
           kubectl rollout status deployment/user-service -n "${NAMESPACE}" --timeout=180s
           kubectl rollout status deployment/notification-service -n "${NAMESPACE}" --timeout=180s
+
+      - name: Smoke test service health
+        env:
+          DEPLOY_ENV: ${{ steps.env.outputs.deploy_env }}
+        run: |
+          NAMESPACE="cloudmart-prod"
+          if [ "${DEPLOY_ENV}" = "staging" ]; then
+            NAMESPACE="cloudmart-staging"
+          fi
+
+          kubectl run cloudmart-smoke --rm -i --restart=Never \
+            --namespace "${NAMESPACE}" \
+            --image=curlimages/curl:8.10.1 \
+            --command -- sh -c '
+              curl -fsS http://frontend/health &&
+              curl -fsS http://product-service:8001/health &&
+              curl -fsS http://order-service:8002/health &&
+              curl -fsS http://user-service:8003/health &&
+              curl -fsS http://notification-service:8004/health
+            '

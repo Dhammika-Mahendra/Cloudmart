@@ -50,7 +50,21 @@ async function sendEmail(to, subject, body) {
     //     Body: { Text: { Data: body } },
     //   },
     // }));
-    console.log(`[SES] Would send email to ${to}: ${subject}`);
+    const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+    const source = process.env.FROM_EMAIL;
+    if (!source) {
+      throw new Error('FROM_EMAIL is required when EMAIL_BACKEND=ses');
+    }
+    const client = new SESClient({ region: process.env.AWS_REGION || 'ap-south-1' });
+    await client.send(new SendEmailCommand({
+      Source: source,
+      Destination: { ToAddresses: [to] },
+      Message: {
+        Subject: { Data: subject },
+        Body: { Text: { Data: body } },
+      },
+    }));
+    console.log(`[SES] Sent email to ${to}: ${subject}`);
   } else if (backend === 'sendgrid') {
     // TODO: SendGrid (GCP / Azure) — use @sendgrid/mail
     // const sgMail = require('@sendgrid/mail');
@@ -176,7 +190,25 @@ async function pollCloudQueue() {
     //     ReceiptHandle: msg.ReceiptHandle,
     //   }));
     // }
-    console.log('[SQS] Would poll for messages...');
+    const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require('@aws-sdk/client-sqs');
+    const queueUrl = process.env.SQS_QUEUE_URL;
+    if (!queueUrl) {
+      throw new Error('SQS_QUEUE_URL is required when QUEUE_BACKEND=sqs');
+    }
+    const client = new SQSClient({ region: process.env.AWS_REGION || 'ap-south-1' });
+    const response = await client.send(new ReceiveMessageCommand({
+      QueueUrl: queueUrl,
+      MaxNumberOfMessages: 10,
+      WaitTimeSeconds: 10,
+      VisibilityTimeout: 30,
+    }));
+    for (const msg of response.Messages || []) {
+      await processOrderEvent(JSON.parse(msg.Body));
+      await client.send(new DeleteMessageCommand({
+        QueueUrl: queueUrl,
+        ReceiptHandle: msg.ReceiptHandle,
+      }));
+    }
   } else if (backend === 'pubsub') {
     // TODO: GCP Pub/Sub — use @google-cloud/pubsub
     // Pub/Sub uses push or streaming pull — implement subscription handler
@@ -229,11 +261,19 @@ app.get('/notifications', (req, res) => {
 // Start server + polling
 // ---------------------------------------------------------------------------
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[notification-service] Health endpoint on port ${PORT}`);
-  console.log(`[notification-service] Queue backend: ${process.env.QUEUE_BACKEND || 'memory'}`);
-  console.log(`[notification-service] Email backend: ${process.env.EMAIL_BACKEND || 'console'}`);
-  startPolling();
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[notification-service] Health endpoint on port ${PORT}`);
+    console.log(`[notification-service] Queue backend: ${process.env.QUEUE_BACKEND || 'memory'}`);
+    console.log(`[notification-service] Email backend: ${process.env.EMAIL_BACKEND || 'console'}`);
+    startPolling();
+  });
+}
 
-module.exports = app;
+module.exports = {
+  app,
+  notificationLog,
+  pollCloudQueue,
+  processOrderEvent,
+  sendEmail,
+};

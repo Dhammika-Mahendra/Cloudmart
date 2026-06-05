@@ -11,3 +11,6 @@ enable_gateway_endpoints  = true
 enable_flow_logs          = false
 flow_log_retention_days   = 7
 bastion_allowed_ssh_cidrs = []
+
+ses_from_email = "noreply@cloudmart.example"
+alert_email    = "your-email@example.com"

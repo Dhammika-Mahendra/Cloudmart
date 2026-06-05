@@ -60,6 +60,21 @@ module "ecr" {
   tags              = local.common_tags
 }
 
+module "sqs" {
+  source = "../../modules/sqs"
+
+  name_prefix = local.name_prefix
+  tags        = local.common_tags
+}
+
+module "ses" {
+  source = "../../modules/ses"
+
+  name_prefix = local.name_prefix
+  from_email  = var.ses_from_email
+  tags        = local.common_tags
+}
+
 resource "aws_iam_policy" "user_service_rds_secret" {
   name        = "${local.name_prefix}-user-service-rds-secret-policy"
   description = "Allow user-service to read only the CloudMart RDS credential secret."
@@ -97,10 +112,83 @@ module "eks" {
   node_disk_size          = var.eks_node_disk_size
   namespace               = "cloudmart-staging"
   irsa_policy_arns = {
-    product-service = [module.dynamodb.product_service_policy_arn]
-    user-service    = [aws_iam_policy.user_service_rds_secret.arn]
+    product-service      = [module.dynamodb.product_service_policy_arn]
+    order-service        = [module.sqs.order_service_policy_arn]
+    user-service         = [aws_iam_policy.user_service_rds_secret.arn]
+    notification-service = [module.sqs.notification_service_policy_arn, module.ses.notification_service_policy_arn]
   }
   tags = local.common_tags
+}
+
+resource "aws_iam_policy" "aws_load_balancer_controller" {
+  name        = "${local.name_prefix}-aws-load-balancer-controller-policy"
+  description = "Allow AWS Load Balancer Controller to manage ALBs for CloudMart."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "acm:DescribeCertificate",
+        "acm:ListCertificates",
+        "acm:GetCertificate",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateTags",
+        "ec2:DeleteSecurityGroup",
+        "ec2:DeleteTags",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeCoipPools",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeTags",
+        "ec2:DescribeVpcs",
+        "ec2:RevokeSecurityGroupIngress",
+        "elasticloadbalancing:*",
+        "iam:CreateServiceLinkedRole",
+        "wafv2:GetWebACL",
+        "wafv2:GetWebACLForResource",
+        "wafv2:AssociateWebACL",
+        "wafv2:DisassociateWebACL"
+      ]
+      Resource = "*"
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role" "aws_load_balancer_controller" {
+  name = "${local.name_prefix}-aws-load-balancer-controller-irsa"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = module.eks.oidc_provider_arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${replace(module.eks.oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
+          "${replace(module.eks.oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+        }
+      }
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller" {
+  role       = aws_iam_role.aws_load_balancer_controller.name
+  policy_arn = aws_iam_policy.aws_load_balancer_controller.arn
 }
 
 module "rds" {
@@ -110,7 +198,7 @@ module "rds" {
   vpc_id                = module.network.vpc_id
   subnet_ids            = module.network.private_data_subnet_ids
   security_group_id     = module.network.rds_security_group_id
-  backup_retention_days = 0
+  backup_retention_days = 7
   deletion_protection   = false
   skip_final_snapshot   = true
   tags                  = local.common_tags
@@ -124,5 +212,21 @@ module "dynamodb" {
   tags        = local.common_tags
 }
 
-# module "sqs" {}
-# module "secrets" {}
+module "security" {
+  source = "../../modules/security"
+
+  name_prefix      = local.name_prefix
+  enable_guardduty = var.enable_guardduty
+  enable_waf       = var.enable_waf
+  tags             = local.common_tags
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  name_prefix  = local.name_prefix
+  aws_region   = var.aws_region
+  cluster_name = module.eks.cluster_name
+  alert_email  = var.alert_email
+  tags         = local.common_tags
+}

@@ -34,6 +34,11 @@ output "oidc_provider_arn" {
   value       = aws_iam_openid_connect_provider.this.arn
 }
 
+output "oidc_issuer_url" {
+  description = "EKS OIDC issuer URL."
+  value       = aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
 output "service_account_role_arns" {
   description = "IRSA role ARNs keyed by service account name."
   value       = { for name, role in aws_iam_role.service_account : name => role.arn }

@@ -43,6 +43,26 @@ output "rds_secret_name" {
   value       = module.rds.secret_name
 }
 
+output "sqs_queue_url" {
+  description = "SQS queue URL for order events."
+  value       = module.sqs.queue_url
+}
+
+output "ses_from_email" {
+  description = "SES sender email identity."
+  value       = module.ses.from_email
+}
+
+output "waf_web_acl_arn" {
+  description = "WAF Web ACL ARN for ALB Ingress."
+  value       = module.security.waf_web_acl_arn
+}
+
+output "aws_load_balancer_controller_role_arn" {
+  description = "IRSA role ARN for AWS Load Balancer Controller."
+  value       = aws_iam_role.aws_load_balancer_controller.arn
+}
+
 output "eks_cluster_name" {
   description = "EKS cluster name."
   value       = module.eks.cluster_name
@@ -61,4 +81,9 @@ output "eks_oidc_provider_arn" {
 output "eks_service_account_role_arns" {
   description = "IRSA role ARNs for Kubernetes service accounts."
   value       = module.eks.service_account_role_arns
+}
+
+output "monitoring_alerts_topic_arn" {
+  description = "SNS topic ARN for monitoring alerts."
+  value       = module.monitoring.alerts_topic_arn
 }

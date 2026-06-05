@@ -40,9 +40,9 @@ variable "az_count" {
 }
 
 variable "enable_nat_gateway" {
-  description = "Create one NAT Gateway. Required for private subnet internet egress, but has hourly cost."
+  description = "Create one NAT Gateway. Required for private EKS worker nodes unless ECR/STS/Logs/Secrets Manager interface endpoints are added."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_gateway_endpoints" {
@@ -187,6 +187,30 @@ variable "dynamodb_billing_mode" {
 
 variable "dynamodb_pitr_enabled" {
   description = "Enable DynamoDB point-in-time recovery (35-day rolling backup window)."
+  type        = bool
+  default     = true
+}
+
+variable "ses_from_email" {
+  description = "SES sender email identity for CloudMart notifications."
+  type        = string
+  default     = "noreply@cloudmart.example"
+}
+
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm notifications."
+  type        = string
+  default     = "yasiram447@gmail.com"
+}
+
+variable "enable_guardduty" {
+  description = "Enable GuardDuty threat detection."
+  type        = bool
+  default     = true
+}
+
+variable "enable_waf" {
+  description = "Create WAF for ALB Ingress."
   type        = bool
   default     = true
 }
