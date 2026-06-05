@@ -242,7 +242,7 @@ terraform apply -var-file=terraform.tfvars
 Copy `infra/bootstrap/terraform.tfvars.example` to `infra/bootstrap/terraform.tfvars` first and update `team_id` and `owner_email`.
 
 GitHub Actions setup notes are available in `docs/github-actions-setup.md`.
-Temporary ECS deployment notes are available in `docs/ecs-deploy-setup.md`.
+EKS deployment is handled by `.github/workflows/eks-build-push-deploy.yml` after the Terraform environment stack has been applied.
 The full AWS setup and progress runbook is available in `docs/cloudmart-aws-runbook.md`.
 
 For low-cost Stage 2 deployment, NAT Gateway and VPC Flow Logs are disabled by default. Enable them only when you need private subnet internet egress or flow-log evidence for the report.

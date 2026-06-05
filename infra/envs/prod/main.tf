@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -56,24 +60,6 @@ module "ecr" {
   tags              = local.common_tags
 }
 
-module "ecs" {
-  source = "../../modules/ecs"
-
-  name_prefix               = local.name_prefix
-  aws_region                = var.aws_region
-  vpc_id                    = module.network.vpc_id
-  subnet_ids                = module.network.public_subnet_ids
-  allowed_http_cidrs        = var.ecs_allowed_http_cidrs
-  frontend_port             = var.ecs_frontend_port
-  task_cpu                  = var.ecs_task_cpu
-  task_memory               = var.ecs_task_memory
-  desired_count             = var.ecs_desired_count
-  log_retention_days        = var.ecs_log_retention_days
-  enable_container_insights = var.ecs_enable_container_insights
-  tags                      = local.common_tags
-}
-
-# module "eks" {}
 # module "sqs" {}
 # module "secrets" {}
 
@@ -111,24 +97,9 @@ module "dynamodb" {
   tags                   = local.common_tags
 }
 
-resource "aws_security_group_rule" "rds_from_ecs" {
-  type                     = "ingress"
-  description              = "PostgreSQL from ECS task"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = module.ecs.service_security_group_id
-  security_group_id        = module.network.rds_security_group_id
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_product_dynamodb" {
-  role       = module.ecs.task_role_name
-  policy_arn = module.dynamodb.product_service_policy_arn
-}
-
-resource "aws_iam_role_policy" "ecs_read_rds_secret" {
-  name = "${local.name_prefix}-ecs-read-rds-secret"
-  role = module.ecs.task_role_name
+resource "aws_iam_policy" "user_service_rds_secret" {
+  name        = "${local.name_prefix}-user-service-rds-secret-policy"
+  description = "Allow user-service to read only the CloudMart RDS credential secret."
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -143,4 +114,28 @@ resource "aws_iam_role_policy" "ecs_read_rds_secret" {
       }
     ]
   })
+
+  tags = local.common_tags
+}
+
+module "eks" {
+  source = "../../modules/eks"
+
+  name_prefix             = local.name_prefix
+  cluster_version         = var.eks_cluster_version
+  subnet_ids              = module.network.private_app_subnet_ids
+  node_security_group_id  = module.network.eks_nodes_security_group_id
+  endpoint_public_access  = var.eks_endpoint_public_access
+  endpoint_private_access = var.eks_endpoint_private_access
+  node_instance_types     = var.eks_node_instance_types
+  node_desired_size       = var.eks_node_desired_size
+  node_min_size           = var.eks_node_min_size
+  node_max_size           = var.eks_node_max_size
+  node_disk_size          = var.eks_node_disk_size
+  namespace               = "cloudmart-prod"
+  irsa_policy_arns = {
+    product-service = [module.dynamodb.product_service_policy_arn]
+    user-service    = [aws_iam_policy.user_service_rds_secret.arn]
+  }
+  tags = local.common_tags
 }

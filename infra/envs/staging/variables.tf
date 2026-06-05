@@ -69,44 +69,50 @@ variable "bastion_allowed_ssh_cidrs" {
   default     = []
 }
 
-variable "ecs_allowed_http_cidrs" {
-  description = "CIDR blocks allowed to access the temporary ECS frontend."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "ecs_frontend_port" {
-  description = "Temporary public frontend port for ECS before a load balancer is added."
-  type        = number
-  default     = 8080
-}
-
-variable "ecs_task_cpu" {
-  description = "Fargate CPU units for the temporary all-in-one CloudMart task."
+variable "eks_cluster_version" {
+  description = "EKS Kubernetes version."
   type        = string
-  default     = "1024"
+  default     = "1.30"
 }
 
-variable "ecs_task_memory" {
-  description = "Fargate memory for the temporary all-in-one CloudMart task."
-  type        = string
-  default     = "2048"
-}
-
-variable "ecs_desired_count" {
-  description = "Initial ECS task count. Keep 0 until GitHub Actions deploys images."
-  type        = number
-  default     = 0
-}
-
-variable "ecs_log_retention_days" {
-  description = "CloudWatch retention period for ECS logs."
-  type        = number
-  default     = 7
-}
-
-variable "ecs_enable_container_insights" {
-  description = "Enable ECS Container Insights. Keep false for lower cost."
+variable "eks_endpoint_public_access" {
+  description = "Allow public access to the EKS API endpoint."
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "eks_endpoint_private_access" {
+  description = "Allow private access to the EKS API endpoint inside the VPC."
+  type        = bool
+  default     = true
+}
+
+variable "eks_node_instance_types" {
+  description = "EKS managed node group instance types."
+  type        = list(string)
+  default     = ["t3.small"]
+}
+
+variable "eks_node_desired_size" {
+  description = "Desired number of EKS worker nodes."
+  type        = number
+  default     = 2
+}
+
+variable "eks_node_min_size" {
+  description = "Minimum number of EKS worker nodes."
+  type        = number
+  default     = 2
+}
+
+variable "eks_node_max_size" {
+  description = "Maximum number of EKS worker nodes."
+  type        = number
+  default     = 3
+}
+
+variable "eks_node_disk_size" {
+  description = "EKS worker node root disk size in GiB."
+  type        = number
+  default     = 30
 }

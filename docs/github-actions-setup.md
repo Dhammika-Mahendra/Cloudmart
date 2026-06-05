@@ -111,3 +111,42 @@ It performs:
 - Trivy scan that fails on CRITICAL findings
 
 This workflow does not push to ECR yet. Add image push and Kubernetes deployment after the ECR and EKS Terraform modules are in place.
+
+### `eks-build-push-deploy.yml`
+
+Builds all five service images, scans them with Trivy, pushes them to ECR, renders the Kubernetes manifests in `k8s/base`, and applies them to EKS.
+
+Triggers:
+
+- Push to `dev-ramosh99`: deploys to `cloudmart-staging`
+- Push to `main`: deploys to `cloudmart-prod`
+- Manual workflow dispatch: choose `staging` or `prod`
+
+Before this workflow can deploy successfully, run `terraform-environment.yml` with `action=apply` for the target environment so the EKS cluster, ECR repositories, RDS, DynamoDB, and IRSA outputs exist in Terraform remote state.
+
+Required repository/environment secrets:
+
+| Secret | Purpose |
+|--------|---------|
+| `AWS_ROLE_TO_ASSUME` | IAM role used by GitHub Actions through OIDC |
+| `JWT_SECRET` | JWT signing secret injected into `user-service` |
+| `SQS_QUEUE_URL` | SQS queue URL for order events once the queue module is added |
+| `ORDER_SERVICE_IRSA_ROLE_ARN` | IRSA role for order-service SQS access, until Terraform creates it |
+| `NOTIFICATION_SERVICE_IRSA_ROLE_ARN` | IRSA role for notification-service SQS/SES access, until Terraform creates it |
+
+Useful repository/environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `AWS_REGION` | `ap-south-1` | AWS region |
+| `TF_STATE_BUCKET` | `cloudmart-13-tfstate-804431973197` | Terraform remote state bucket |
+| `TF_LOCK_TABLE` | `cloudmart-13-terraform-locks` | Terraform lock table |
+| `CLOUDMART_TEAM_ID` | `13` | Team ID used in names |
+| `CLOUDMART_OWNER_EMAIL` | `yasiram447@gmail.com` | Cost tag owner |
+| `FROM_EMAIL` | `noreply@cloudmart.example` | Notification sender address |
+
+Cluster prerequisites not installed by this workflow yet:
+
+- AWS Load Balancer Controller, required for the ALB Ingress
+- Metrics Server, required for HPA CPU metrics
+- SQS/SES Terraform and real service adapters for complete order email flow

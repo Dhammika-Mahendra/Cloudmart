@@ -28,28 +28,13 @@ output "ecr_repository_urls" {
   value       = module.ecr.repository_urls
 }
 
-output "ecs_cluster_name" {
-  description = "Value for GitHub secret ECS_CLUSTER_NAME."
-  value       = module.ecs.cluster_name
-}
-
-output "ecs_service_name" {
-  description = "Value for GitHub secret ECS_SERVICE_NAME."
-  value       = module.ecs.service_name
-}
-
-output "ecs_task_execution_role_arn" {
-  description = "Value for GitHub secret ECS_TASK_EXECUTION_ROLE_ARN."
-  value       = module.ecs.task_execution_role_arn
-}
-
-output "ecs_task_role_arn" {
-  description = "Value for GitHub secret ECS_TASK_ROLE_ARN."
-  value       = module.ecs.task_role_arn
-}
-
 output "dynamodb_products_table_name" {
   description = "Products table used by product-service."
+  value       = module.dynamodb.table_name
+}
+
+output "dynamodb_table_name" {
+  description = "DynamoDB table name. Alias kept consistent with prod outputs."
   value       = module.dynamodb.table_name
 }
 
@@ -58,7 +43,22 @@ output "rds_secret_name" {
   value       = module.rds.secret_name
 }
 
-output "ecs_frontend_port" {
-  description = "Temporary public frontend port."
-  value       = module.ecs.frontend_port
+output "eks_cluster_name" {
+  description = "EKS cluster name."
+  value       = module.eks.cluster_name
+}
+
+output "eks_node_group_name" {
+  description = "EKS managed node group name."
+  value       = module.eks.node_group_name
+}
+
+output "eks_oidc_provider_arn" {
+  description = "EKS OIDC provider ARN for IRSA."
+  value       = module.eks.oidc_provider_arn
+}
+
+output "eks_service_account_role_arns" {
+  description = "IRSA role ARNs for Kubernetes service accounts."
+  value       = module.eks.service_account_role_arns
 }
