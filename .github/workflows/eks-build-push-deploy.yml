@@ -290,10 +290,13 @@ jobs:
         env:
           DEPLOY_ENV: ${{ steps.env.outputs.deploy_env }}
         run: |
-          NAMESPACE="cloudmart-prod"
           if [ "${DEPLOY_ENV}" = "staging" ]; then
             NAMESPACE="cloudmart-staging"
+          else
+            NAMESPACE="cloudmart-prod"
           fi
+
+          echo "Waiting for rollouts in namespace ${NAMESPACE}"
 
           for DEPLOYMENT in frontend product-service order-service user-service notification-service; do
             kubectl rollout status "deployment/${DEPLOYMENT}" -n "${NAMESPACE}" --timeout=300s
@@ -304,10 +307,13 @@ jobs:
         env:
           DEPLOY_ENV: ${{ steps.env.outputs.deploy_env }}
         run: |
-          NAMESPACE="cloudmart-prod"
           if [ "${DEPLOY_ENV}" = "staging" ]; then
             NAMESPACE="cloudmart-staging"
+          else
+            NAMESPACE="cloudmart-prod"
           fi
+
+          echo "Collecting diagnostics from namespace ${NAMESPACE}"
 
           kubectl get nodes -o wide || true
           kubectl get pods -n "${NAMESPACE}" -o wide || true
@@ -321,9 +327,10 @@ jobs:
         env:
           DEPLOY_ENV: ${{ steps.env.outputs.deploy_env }}
         run: |
-          NAMESPACE="cloudmart-prod"
           if [ "${DEPLOY_ENV}" = "staging" ]; then
             NAMESPACE="cloudmart-staging"
+          else
+            NAMESPACE="cloudmart-prod"
           fi
 
           kubectl run cloudmart-smoke --rm -i --restart=Never \
