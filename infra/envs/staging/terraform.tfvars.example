@@ -14,3 +14,6 @@ bastion_allowed_ssh_cidrs = []
 
 ses_from_email = "noreply@cloudmart.example"
 alert_email    = "your-email@example.com"
+
+rds_backup_retention_days = 0 # Set to 7 when the AWS account allows RDS automated backups.
+enable_guardduty          = false

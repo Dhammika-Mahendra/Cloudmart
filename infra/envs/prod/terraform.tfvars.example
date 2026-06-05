@@ -14,3 +14,5 @@ bastion_allowed_ssh_cidrs = []
 
 ses_from_email = "noreply@cloudmart.example"
 alert_email    = "your-email@example.com"
+
+enable_guardduty = false # Set true when GuardDuty is available for the AWS account.

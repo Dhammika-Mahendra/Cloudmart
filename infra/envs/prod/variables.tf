@@ -206,7 +206,7 @@ variable "alert_email" {
 variable "enable_guardduty" {
   description = "Enable GuardDuty threat detection."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_waf" {

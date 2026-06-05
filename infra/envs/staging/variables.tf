@@ -117,6 +117,12 @@ variable "eks_node_disk_size" {
   default     = 30
 }
 
+variable "rds_backup_retention_days" {
+  description = "Automated backup retention in days. Use 0 only when the AWS account Free Tier restriction blocks backups."
+  type        = number
+  default     = 0
+}
+
 variable "ses_from_email" {
   description = "SES sender email identity for CloudMart notifications."
   type        = string
@@ -132,7 +138,7 @@ variable "alert_email" {
 variable "enable_guardduty" {
   description = "Enable GuardDuty threat detection."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_waf" {

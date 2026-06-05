@@ -198,7 +198,7 @@ module "rds" {
   vpc_id                = module.network.vpc_id
   subnet_ids            = module.network.private_data_subnet_ids
   security_group_id     = module.network.rds_security_group_id
-  backup_retention_days = 7
+  backup_retention_days = var.rds_backup_retention_days
   deletion_protection   = false
   skip_final_snapshot   = true
   tags                  = local.common_tags

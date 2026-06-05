@@ -7,7 +7,7 @@
 
 ## Database Backups
 
-RDS automated backups are configured with 7-day retention in the Terraform environment stacks. Restore testing should create a separate test instance from a point in time, verify login/profile data, and then destroy the test instance.
+RDS automated backups should be configured with 7-day retention for final evidence. The staging stack defaults to `0` only because some AWS Free Tier restricted accounts reject automated backups with `FreeTierRestrictionError`. When the account allows it, set `rds_backup_retention_days = 7`, apply Terraform, and restore-test into a separate test instance.
 
 ## Kubernetes Resource Backup
 
