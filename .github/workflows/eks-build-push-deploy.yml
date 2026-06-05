@@ -166,11 +166,25 @@ jobs:
         working-directory: infra/envs/${{ steps.env.outputs.deploy_env }}
         run: |
           terraform output -json > tfoutputs.json
-          echo "eks_cluster_name=$(jq -r '.eks_cluster_name.value' tfoutputs.json)" >> "$GITHUB_OUTPUT"
-          echo "dynamodb_table_name=$(jq -r '.dynamodb_table_name.value' tfoutputs.json)" >> "$GITHUB_OUTPUT"
-          echo "rds_secret_name=$(jq -r '.rds_secret_name.value' tfoutputs.json)" >> "$GITHUB_OUTPUT"
-          echo "product_service_role_arn=$(jq -r '.eks_service_account_role_arns.value["product-service"] // ""' tfoutputs.json)" >> "$GITHUB_OUTPUT"
-          echo "user_service_role_arn=$(jq -r '.eks_service_account_role_arns.value["user-service"] // ""' tfoutputs.json)" >> "$GITHUB_OUTPUT"
+          echo "Available Terraform outputs:"
+          jq -r 'keys[]' tfoutputs.json
+
+          EKS_CLUSTER_NAME="$(jq -er '.eks_cluster_name.value // empty' tfoutputs.json)"
+          DYNAMODB_TABLE_NAME="$(jq -er '.dynamodb_table_name.value // .dynamodb_products_table_name.value // empty' tfoutputs.json)"
+          RDS_SECRET_NAME="$(jq -er '.rds_secret_name.value // empty' tfoutputs.json)"
+          PRODUCT_SERVICE_ROLE_ARN="$(jq -r '.eks_service_account_role_arns.value["product-service"] // ""' tfoutputs.json)"
+          USER_SERVICE_ROLE_ARN="$(jq -r '.eks_service_account_role_arns.value["user-service"] // ""' tfoutputs.json)"
+
+          if [ -z "${EKS_CLUSTER_NAME}" ] || [ "${EKS_CLUSTER_NAME}" = "null" ]; then
+            echo "::error::Terraform output eks_cluster_name is missing. Run the Terraform Environment workflow with action=apply for ${{ steps.env.outputs.deploy_env }} before deploying to EKS."
+            exit 1
+          fi
+
+          echo "eks_cluster_name=${EKS_CLUSTER_NAME}" >> "$GITHUB_OUTPUT"
+          echo "dynamodb_table_name=${DYNAMODB_TABLE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "rds_secret_name=${RDS_SECRET_NAME}" >> "$GITHUB_OUTPUT"
+          echo "product_service_role_arn=${PRODUCT_SERVICE_ROLE_ARN}" >> "$GITHUB_OUTPUT"
+          echo "user_service_role_arn=${USER_SERVICE_ROLE_ARN}" >> "$GITHUB_OUTPUT"
 
       - name: Configure kubectl for EKS
         run: |
