@@ -165,7 +165,6 @@ function App() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           userId: user.id,
-          userEmail: user.email,
           items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity })),
           shippingAddress: user.address || 'Address not provided',
         }),
@@ -330,7 +329,7 @@ function ProductsPage({ products, addToCart, searchTerm, setSearchTerm, category
               onClick={() => addToCart(product)}
               disabled={product.stock === 0}
             >
-              {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
+              {product.stock > 0 ? 'Add' : 'Out of Stock'}
             </button>
           </div>
         ))}
@@ -387,7 +386,7 @@ function CartPage({ cart, removeFromCart, cartTotal, placeOrder, loading }) {
         <tfoot>
           <tr>
             <td colSpan={3} style={{ ...styles.td, fontWeight: 'bold' }}>Total</td>
-            <td style={{ ...styles.td, fontWeight: 'bold', fontSize: '18px', color: '#111fdf' }}>
+            <td style={{ ...styles.td, fontWeight: 'bold', fontSize: '18px', color: '#e94560' }}>
               ${cartTotal.toFixed(2)}
             </td>
             <td style={styles.td}></td>
