@@ -111,7 +111,6 @@ module "eks" {
   node_max_size           = var.eks_node_max_size
   node_disk_size          = var.eks_node_disk_size
   namespace               = "cloudmart-staging"
-  admin_principal_arns    = var.eks_admin_principal_arns
   irsa_policy_arns = {
     product-service      = [module.dynamodb.product_service_policy_arn]
     order-service        = [module.sqs.order_service_policy_arn]

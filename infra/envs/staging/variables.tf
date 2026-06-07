@@ -117,12 +117,6 @@ variable "eks_node_disk_size" {
   default     = 30
 }
 
-variable "eks_admin_principal_arns" {
-  description = "IAM principal ARNs that should receive Kubernetes cluster-admin access."
-  type        = list(string)
-  default     = []
-}
-
 variable "rds_backup_retention_days" {
   description = "Automated backup retention in days. Use 0 only when the AWS account Free Tier restriction blocks backups."
   type        = number

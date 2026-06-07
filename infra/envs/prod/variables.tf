@@ -145,12 +145,6 @@ variable "rds_allocated_storage" {
   default     = 20
 }
 
-variable "eks_admin_principal_arns" {
-  description = "IAM principal ARNs that should receive Kubernetes cluster-admin access."
-  type        = list(string)
-  default     = []
-}
-
 variable "rds_backup_retention_days" {
   description = "Automated backup retention in days. Assignment requires 7."
   type        = number
