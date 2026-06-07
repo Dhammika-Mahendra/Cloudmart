@@ -99,6 +99,8 @@ jobs:
           -var="environment=${{ inputs.environment }}"
           -var="team_id=${{ env.CLOUDMART_TEAM_ID }}"
           -var="owner_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var="ses_from_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var="alert_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
           -out=tfplan
 
       - name: Terraform apply

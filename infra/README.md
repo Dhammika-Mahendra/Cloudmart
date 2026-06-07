@@ -1,6 +1,6 @@
 # CloudMart AWS Infrastructure
 
-This directory is organized in stages so the AWS foundation can be created safely before the full EKS deployment is added.
+This directory is organized in stages so the AWS foundation can be created safely before deploying CloudMart on EKS.
 
 ## Stage 1: Terraform Remote State Bootstrap
 
@@ -39,35 +39,34 @@ The network module creates:
 - security groups for ALB, EKS nodes, RDS, and bastion
 - free gateway VPC endpoints for S3 and DynamoDB
 
-By default, these cost controls are used:
-
-```hcl
-enable_nat_gateway = false
-enable_flow_logs   = false
-```
-
-NAT Gateway is useful later for private subnet internet egress, but it has an hourly charge. Flow Logs are useful for assignment evidence, but CloudWatch log ingestion/storage can cost money. Turn them on only when needed:
+By default, EKS environments enable NAT Gateway because private worker nodes need outbound access to pull images and call AWS APIs:
 
 ```hcl
 enable_nat_gateway = true
+enable_flow_logs   = false
+```
+
+NAT Gateway has an hourly charge. Later, interface VPC endpoints for ECR, STS, CloudWatch Logs, and Secrets Manager can reduce NAT dependency. Flow Logs are useful for assignment evidence, but CloudWatch log ingestion/storage can cost money. Turn them on only when needed:
+
+```hcl
 enable_flow_logs   = true
 ```
 
 Gateway endpoints for S3 and DynamoDB stay enabled because they avoid NAT traffic and do not have hourly endpoint charges.
 
-## Temporary ECS Deployment
+## EKS Environment Deployment
 
-The staging environment now also creates:
+The staging and production environments create:
 
 - five ECR repositories with scan-on-push and lifecycle cleanup
-- ECS cluster
-- ECS Fargate service
-- ECS task execution role
-- ECS task role
-- ECS service security group allowing HTTP on port 80
-- CloudWatch log group with 7-day retention
+- an EKS cluster
+- an EKS managed node group in private application subnets
+- EKS OIDC provider for IAM Roles for Service Accounts
+- IRSA roles for product-service and user-service
+- RDS PostgreSQL for user-service
+- DynamoDB for product-service
 
-The ECS service starts with `ecs_desired_count = 0`, so no Fargate task runs until GitHub Actions deploys one. This keeps the setup low-cost while still preparing the AWS target.
+Private EKS worker nodes need outbound access for image pulls and AWS APIs. The examples enable NAT Gateway for that path. Later, interface VPC endpoints for ECR, STS, CloudWatch Logs, and Secrets Manager can reduce NAT dependency.
 
 After applying staging, run:
 
@@ -75,7 +74,7 @@ After applying staging, run:
 terraform output
 ```
 
-Copy the ECS outputs into GitHub Actions secrets as described in `docs/ecs-deploy-setup.md`.
+The `eks-build-push-deploy.yml` workflow reads the EKS, ECR, DynamoDB, RDS, and IRSA values from Terraform remote state.
 
 To initialize staging with the bootstrap backend:
 

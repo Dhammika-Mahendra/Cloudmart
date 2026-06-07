@@ -285,6 +285,16 @@ resource "aws_security_group" "rds" {
   })
 }
 
+resource "aws_security_group_rule" "rds_from_vpc" {
+  type              = "ingress"
+  description       = "PostgreSQL from private VPC workloads"
+  from_port         = 5432
+  to_port           = 5432
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  security_group_id = aws_security_group.rds.id
+}
+
 resource "aws_security_group" "bastion" {
   name        = "${var.name_prefix}-bastion-sg"
   description = "Optional bastion host security group; SSH disabled by default"
