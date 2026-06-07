@@ -73,6 +73,12 @@ variable "namespace" {
   default     = "cloudmart-prod"
 }
 
+variable "admin_principal_arns" {
+  description = "IAM principal ARNs that should receive cluster-admin access through EKS access entries."
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Common tags to apply to resources."
   type        = map(string)

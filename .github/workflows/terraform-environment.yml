@@ -39,6 +39,10 @@ on:
         description: "Owner email for AWS cost tags"
         required: false
         default: "yasiram447@gmail.com"
+      eks_admin_principal_arn:
+        description: "IAM user/role ARN to grant kubectl cluster-admin access"
+        required: false
+        default: "arn:aws:iam::804431973197:user/cloud-user"
 
 permissions:
   id-token: write
@@ -52,6 +56,7 @@ env:
   TF_LOCK_TABLE: ${{ inputs.lock_table || vars.TF_LOCK_TABLE || 'cloudmart-13-terraform-locks' }}
   CLOUDMART_TEAM_ID: ${{ inputs.team_id || vars.CLOUDMART_TEAM_ID || '13' }}
   CLOUDMART_OWNER_EMAIL: ${{ inputs.owner_email || vars.CLOUDMART_OWNER_EMAIL || 'yasiram447@gmail.com' }}
+  EKS_ADMIN_PRINCIPAL_ARN: ${{ inputs.eks_admin_principal_arn || vars.EKS_ADMIN_PRINCIPAL_ARN || 'arn:aws:iam::804431973197:user/cloud-user' }}
 
 jobs:
   terraform:
@@ -101,6 +106,7 @@ jobs:
           -var="owner_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
           -var="ses_from_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
           -var="alert_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var='eks_admin_principal_arns=["${{ env.EKS_ADMIN_PRINCIPAL_ARN }}"]'
           -out=tfplan
 
       - name: Terraform apply
