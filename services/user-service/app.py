@@ -480,7 +480,7 @@ def conflict(e):
 
 @app.errorhandler(500)
 def internal_error(e):
-    logger.error(f"Internal Server Error: {e}")
+    logger.exception("Internal Server Error")
     return jsonify({"error": "Internal Server Error"}), 500
 
 

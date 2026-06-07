@@ -341,5 +341,27 @@ jobs:
               curl -fsS http://product-service:8001/health &&
               curl -fsS http://order-service:8002/health &&
               curl -fsS http://user-service:8003/health &&
-              curl -fsS http://notification-service:8004/health
+              curl -fsS http://notification-service:8004/health &&
+              EMAIL="smoke-$(date +%s)@cloudmart.example" &&
+              curl -fsS -X POST http://user-service:8003/auth/register \
+                -H "Content-Type: application/json" \
+                -d "{\"name\":\"Smoke Test\",\"email\":\"${EMAIL}\",\"password\":\"password123\",\"address\":\"CI smoke\"}" &&
+              curl -fsS -X POST http://user-service:8003/auth/login \
+                -H "Content-Type: application/json" \
+                -d "{\"email\":\"${EMAIL}\",\"password\":\"password123\"}"
             '
+
+      - name: Diagnose smoke failure
+        if: failure()
+        env:
+          DEPLOY_ENV: ${{ steps.env.outputs.deploy_env }}
+        run: |
+          if [ "${DEPLOY_ENV}" = "staging" ]; then
+            NAMESPACE="cloudmart-staging"
+          else
+            NAMESPACE="cloudmart-prod"
+          fi
+
+          kubectl get pods -n "${NAMESPACE}" -o wide || true
+          kubectl describe pods -n "${NAMESPACE}" -l app=user-service || true
+          kubectl logs -n "${NAMESPACE}" -l app=user-service --all-containers --tail=300 || true
