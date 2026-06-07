@@ -12,6 +12,7 @@ import os
 import uuid
 import json
 import logging
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -157,7 +158,8 @@ class PostgresUserStore:
                 f"dbname={creds['dbname']} "
                 f"user={creds['username']} "
                 f"password={creds['password']} "
-                f"sslmode=require"  # Assignment: enforce SSL in transit
+                f"sslmode=require "  # Assignment: enforce SSL in transit
+                f"connect_timeout={os.environ.get('DB_CONNECT_TIMEOUT', '5')}"
             )
         elif os.environ.get("DATABASE_URL"):
             dsn = os.environ["DATABASE_URL"]
@@ -168,7 +170,8 @@ class PostgresUserStore:
                 f"dbname={os.environ.get('DB_NAME', 'cloudmart')} "
                 f"user={os.environ.get('DB_USER', 'cloudmartadmin')} "
                 f"password={os.environ.get('DB_PASSWORD', '')} "
-                f"sslmode=require"
+                f"sslmode=require "
+                f"connect_timeout={os.environ.get('DB_CONNECT_TIMEOUT', '5')}"
             )
         conn = self.psycopg2.connect(dsn)
         conn.autocommit = True
@@ -199,6 +202,15 @@ class PostgresUserStore:
                     "updatedAt"   TEXT
                 )
             """)
+            for user in SEED_USERS:
+                cur.execute(
+                    """
+                    INSERT INTO users (id, email, name, "passwordHash", role, address, "createdAt")
+                    VALUES (%(id)s, %(email)s, %(name)s, %(passwordHash)s, %(role)s, %(address)s, %(createdAt)s)
+                    ON CONFLICT (id) DO NOTHING
+                    """,
+                    user,
+                )
         logger.info("users table ready")
 
     def find_by_email(self, email):
@@ -258,7 +270,17 @@ def create_user_store():
         return InMemoryUserStore()
 
 
-user_store = create_user_store()
+user_store = None
+user_store_lock = threading.Lock()
+
+
+def get_user_store():
+    global user_store
+    if user_store is None:
+        with user_store_lock:
+            if user_store is None:
+                user_store = create_user_store()
+    return user_store
 
 # ---------------------------------------------------------------------------
 # JWT helpers
@@ -316,6 +338,8 @@ def health():
 
 @app.route("/ready")
 def ready():
+    if os.environ.get("DB_BACKEND", "memory").lower() == "postgres" and user_store is None:
+        return jsonify({"status": "ready", "service": "user-service", "database": "lazy"})
     return jsonify({"status": "ready", "service": "user-service"})
 
 
@@ -337,7 +361,9 @@ def register():
         abort(400, description="Password must be at least 8 characters")
 
     # Check if email already exists
-    if user_store.find_by_email(email):
+    store = get_user_store()
+
+    if store.find_by_email(email):
         abort(409, description=f"Email {email} is already registered")
 
     # Hash password
@@ -353,7 +379,7 @@ def register():
         "createdAt": datetime.utcnow().isoformat() + "Z",
     }
 
-    user_store.create(user)
+    store.create(user)
 
     # Generate token
     token = generate_token(user)
@@ -375,7 +401,7 @@ def login():
     if not email or not password:
         abort(400, description="Missing required fields: email, password")
 
-    user = user_store.find_by_email(email)
+    user = get_user_store().find_by_email(email)
     if not user:
         # Use same error message for security (don't reveal whether email exists)
         return jsonify({"error": "Unauthorized", "message": "Invalid email or password"}), 401
@@ -400,7 +426,7 @@ def verify_token():
 @require_auth
 def get_my_profile():
     """Get the current user's profile."""
-    user = user_store.find_by_id(request.user["sub"])
+    user = get_user_store().find_by_id(request.user["sub"])
     if not user:
         abort(404, description="User not found")
     return jsonify(safe_user(user))
@@ -414,7 +440,7 @@ def update_my_profile():
     if not data:
         abort(400, description="Request body required")
 
-    user = user_store.update(request.user["sub"], data)
+    user = get_user_store().update(request.user["sub"], data)
     if not user:
         abort(404, description="User not found")
 
@@ -425,7 +451,7 @@ def update_my_profile():
 @app.route("/users/<user_id>", methods=["GET"])
 def get_user(user_id):
     """Get a user by ID (public profile info only)."""
-    user = user_store.find_by_id(user_id)
+    user = get_user_store().find_by_id(user_id)
     if not user:
         abort(404, description=f"User {user_id} not found")
     # Return limited public info
@@ -454,7 +480,7 @@ def conflict(e):
 
 @app.errorhandler(500)
 def internal_error(e):
-    logger.error(f"Internal Server Error: {e}")
+    logger.exception("Internal Server Error")
     return jsonify({"error": "Internal Server Error"}), 500
 
 

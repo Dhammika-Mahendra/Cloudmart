@@ -38,6 +38,12 @@ variable "point_in_time_recovery" {
   default     = true
 }
 
+variable "seed_products" {
+  description = "Seed the product catalogue with demo products."
+  type        = bool
+  default     = true
+}
+
 variable "tags" {
   description = "Tags to apply to all DynamoDB resources."
   type        = map(string)
