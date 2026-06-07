@@ -121,12 +121,11 @@ async function processOrderEvent(event) {
       `Thank you for shopping with CloudMart!`,
     ].join('\n');
 
-    // In a real system, we'd look up the user's email from user-service
-    const recipientEmail = `${event.userId}@cloudmart.example`;
+    const recipientEmail = event.userEmail || `${event.userId}@cloudmart.example`;
     await sendEmail(recipientEmail, subject, body);
 
     console.log(
-      `[Notification] Processed ORDER_CREATED for ${event.orderId} — ${formatCurrency(event.total)}`
+      `[Notification] Processed ORDER_CREATED for ${event.orderId} — ${formatCurrency(event.total)} to ${recipientEmail}`
     );
   } else if (event.type === 'ORDER_STATUS_CHANGED') {
     const subject = `CloudMart Order ${event.orderId} — Status Update`;
@@ -138,11 +137,11 @@ async function processOrderEvent(event) {
       `Thank you for shopping with CloudMart!`,
     ].join('\n');
 
-    const recipientEmail = `${event.userId}@cloudmart.example`;
+    const recipientEmail = event.userEmail || `${event.userId}@cloudmart.example`;
     await sendEmail(recipientEmail, subject, body);
 
     console.log(
-      `[Notification] Processed ORDER_STATUS_CHANGED for ${event.orderId} → ${event.newStatus}`
+      `[Notification] Processed ORDER_STATUS_CHANGED for ${event.orderId} → ${event.newStatus} to ${recipientEmail}`
     );
   }
 }
