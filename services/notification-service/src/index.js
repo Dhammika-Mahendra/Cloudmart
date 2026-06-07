@@ -122,7 +122,12 @@ async function processOrderEvent(event) {
     ].join('\n');
 
     const recipientEmail = event.userEmail || `${event.userId}@cloudmart.example`;
-    await sendEmail(recipientEmail, subject, body);
+    try {
+      await sendEmail(recipientEmail, subject, body);
+    } catch (err) {
+      console.error(`[Notification] Failed to send ORDER_CREATED email to ${recipientEmail}:`, err.message);
+      return;
+    }
 
     console.log(
       `[Notification] Processed ORDER_CREATED for ${event.orderId} — ${formatCurrency(event.total)} to ${recipientEmail}`
@@ -138,7 +143,12 @@ async function processOrderEvent(event) {
     ].join('\n');
 
     const recipientEmail = event.userEmail || `${event.userId}@cloudmart.example`;
-    await sendEmail(recipientEmail, subject, body);
+    try {
+      await sendEmail(recipientEmail, subject, body);
+    } catch (err) {
+      console.error(`[Notification] Failed to send ORDER_STATUS_CHANGED email to ${recipientEmail}:`, err.message);
+      return;
+    }
 
     console.log(
       `[Notification] Processed ORDER_STATUS_CHANGED for ${event.orderId} → ${event.newStatus} to ${recipientEmail}`
@@ -234,7 +244,11 @@ const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '5000', 10);
 
 function startPolling() {
   console.log(`[Notification] Starting queue polling (every ${POLL_INTERVAL_MS}ms)`);
-  setInterval(pollCloudQueue, POLL_INTERVAL_MS);
+  setInterval(() => {
+    pollCloudQueue().catch((err) => {
+      console.error('[Notification] Queue polling failed:', err.message);
+    });
+  }, POLL_INTERVAL_MS);
 }
 
 // ---------------------------------------------------------------------------
