@@ -387,7 +387,7 @@ function CartPage({ cart, removeFromCart, cartTotal, placeOrder, loading }) {
         <tfoot>
           <tr>
             <td colSpan={3} style={{ ...styles.td, fontWeight: 'bold' }}>Total</td>
-            <td style={{ ...styles.td, fontWeight: 'bold', fontSize: '18px', color: '#e94560' }}>
+            <td style={{ ...styles.td, fontWeight: 'bold', fontSize: '18px', color: '#111fdf' }}>
               ${cartTotal.toFixed(2)}
             </td>
             <td style={styles.td}></td>
