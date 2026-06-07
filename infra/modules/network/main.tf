@@ -269,20 +269,30 @@ resource "aws_security_group_rule" "eks_nodes_from_alb" {
 
 resource "aws_security_group" "rds" {
   name        = "${var.name_prefix}-rds-sg"
-  description = "Allow PostgreSQL only from private VPC workloads"
+  description = "Allow PostgreSQL only from EKS worker nodes"
   vpc_id      = aws_vpc.this.id
 
   ingress {
-    description = "PostgreSQL from private VPC workloads"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    description     = "PostgreSQL from EKS worker nodes"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.eks_nodes.id]
   }
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-rds-sg"
   })
+}
+
+resource "aws_security_group_rule" "rds_from_vpc" {
+  type              = "ingress"
+  description       = "PostgreSQL from private VPC workloads"
+  from_port         = 5432
+  to_port           = 5432
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  security_group_id = aws_security_group.rds.id
 }
 
 resource "aws_security_group" "bastion" {
