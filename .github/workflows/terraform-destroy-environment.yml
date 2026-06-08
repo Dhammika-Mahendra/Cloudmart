@@ -78,20 +78,25 @@ jobs:
       - name: Delete Kubernetes ingress first
         run: |
           set +e
-          EKS_CLUSTER_NAME="$(terraform output -raw eks_cluster_name 2>/dev/null)"
+          EKS_CLUSTER_NAME="$(terraform output -json 2>/dev/null | jq -r '.eks_cluster_name.value // empty')"
           if [ -z "${EKS_CLUSTER_NAME}" ]; then
             echo "No EKS cluster output found; skipping Kubernetes cleanup."
             exit 0
           fi
 
           aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}"
+          if [ "$?" -ne 0 ]; then
+            echo "Could not configure kubectl for ${EKS_CLUSTER_NAME}; cluster may already be destroyed."
+            exit 0
+          fi
+
           kubectl delete ingress cloudmart-frontend \
             --namespace "cloudmart-${{ inputs.environment }}" \
             --ignore-not-found=true
           kubectl scale deployment \
             frontend product-service order-service user-service notification-service \
             --namespace "cloudmart-${{ inputs.environment }}" \
-            --replicas=0
+            --replicas=0 || true
 
       - name: Preserve shared ECR repositories
         if: inputs.preserve_ecr
