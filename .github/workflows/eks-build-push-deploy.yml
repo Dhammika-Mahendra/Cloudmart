@@ -18,7 +18,7 @@ on:
         type: boolean
   push:
     branches:
-      - dev-ramosh99
+      - stage
       - main
     paths:
       - "services/**"

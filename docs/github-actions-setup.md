@@ -64,7 +64,7 @@ After bootstrap, reduce permissions where possible and use environment-specific 
 
 ### `terraform-checks.yml`
 
-Runs automatically on pull requests and pushes to `main` or `dev-ramosh99` when infrastructure files change.
+Runs automatically on pull requests and pushes to `main` or `stage` when infrastructure files change.
 
 It performs:
 
@@ -118,7 +118,7 @@ Builds all five service images, scans them with Trivy, pushes them to ECR, rende
 
 Triggers:
 
-- Push to `dev-ramosh99`: deploys to `cloudmart-staging`
+- Push to `stage`: deploys to `cloudmart-staging`
 - Push to `main`: deploys to `cloudmart-prod`
 - Manual workflow dispatch: choose `staging` or `prod`
 
