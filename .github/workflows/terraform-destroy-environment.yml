@@ -117,6 +117,8 @@ jobs:
           -var="owner_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
           -var="ses_from_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
           -var="alert_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var="rds_deletion_protection=false"
+          -var="rds_skip_final_snapshot=true"
           -out=destroy.tfplan
 
       - name: Terraform destroy apply
