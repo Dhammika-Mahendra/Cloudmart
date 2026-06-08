@@ -148,7 +148,7 @@ variable "rds_allocated_storage" {
 variable "rds_backup_retention_days" {
   description = "Automated backup retention in days. Assignment requires 7."
   type        = number
-  default     = 7
+  default     = 0
 }
 
 variable "rds_multi_az" {
