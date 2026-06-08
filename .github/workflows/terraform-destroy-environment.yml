@@ -101,17 +101,20 @@ jobs:
       - name: Preserve shared ECR repositories
         if: inputs.preserve_ecr
         run: |
-          set +e
-          terraform state rm 'module.ecr.aws_ecr_repository.this["frontend"]'
-          terraform state rm 'module.ecr.aws_ecr_repository.this["product-service"]'
-          terraform state rm 'module.ecr.aws_ecr_repository.this["user-service"]'
-          terraform state rm 'module.ecr.aws_ecr_repository.this["order-service"]'
-          terraform state rm 'module.ecr.aws_ecr_repository.this["notification-service"]'
-          terraform state rm 'module.ecr.aws_ecr_lifecycle_policy.this["frontend"]'
-          terraform state rm 'module.ecr.aws_ecr_lifecycle_policy.this["product-service"]'
-          terraform state rm 'module.ecr.aws_ecr_lifecycle_policy.this["user-service"]'
-          terraform state rm 'module.ecr.aws_ecr_lifecycle_policy.this["order-service"]'
-          terraform state rm 'module.ecr.aws_ecr_lifecycle_policy.this["notification-service"]'
+          for ADDRESS in \
+            'module.ecr.aws_ecr_repository.this["frontend"]' \
+            'module.ecr.aws_ecr_repository.this["product-service"]' \
+            'module.ecr.aws_ecr_repository.this["user-service"]' \
+            'module.ecr.aws_ecr_repository.this["order-service"]' \
+            'module.ecr.aws_ecr_repository.this["notification-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["frontend"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["product-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["user-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["order-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["notification-service"]'
+          do
+            terraform state rm "${ADDRESS}" || true
+          done
 
       - name: Terraform destroy plan
         run: >
