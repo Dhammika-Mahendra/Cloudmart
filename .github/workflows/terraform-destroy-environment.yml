@@ -116,6 +116,33 @@ jobs:
             terraform state rm "${ADDRESS}" || true
           done
 
+      - name: Disable RDS deletion protection
+        run: |
+          RDS_INSTANCE_ID="$(terraform state show module.rds.aws_db_instance.this 2>/dev/null | awk -F' = ' '/^[[:space:]]*identifier[[:space:]]*=/{gsub(/"/, "", $2); print $2; exit}')"
+
+          if [ -z "${RDS_INSTANCE_ID}" ]; then
+            echo "No RDS instance found in Terraform state; skipping deletion protection update."
+            exit 0
+          fi
+
+          RDS_STATUS="$(aws rds describe-db-instances \
+            --db-instance-identifier "${RDS_INSTANCE_ID}" \
+            --query 'DBInstances[0].DBInstanceStatus' \
+            --output text 2>/dev/null || echo missing)"
+
+          if [ "${RDS_STATUS}" = "missing" ]; then
+            echo "RDS ${RDS_INSTANCE_ID} not found in AWS; skipping deletion protection update."
+            exit 0
+          fi
+
+          aws rds modify-db-instance \
+            --db-instance-identifier "${RDS_INSTANCE_ID}" \
+            --no-deletion-protection \
+            --apply-immediately
+
+          aws rds wait db-instance-available \
+            --db-instance-identifier "${RDS_INSTANCE_ID}"
+
       - name: Terraform destroy plan
         run: >
           terraform plan -destroy
