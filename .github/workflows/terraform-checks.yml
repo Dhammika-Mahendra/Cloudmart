@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - stage
+      - staging
     paths:
       - "infra/**"
       - ".github/workflows/terraform-*.yml"

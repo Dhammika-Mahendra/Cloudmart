@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - stage
+      - staging
     paths:
       - "services/**"
       - ".github/workflows/services-ci.yml"
