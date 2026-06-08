@@ -14,26 +14,6 @@ on:
       confirmation:
         description: "Type destroy-staging or destroy-prod to confirm"
         required: true
-      aws_region:
-        description: "AWS region"
-        required: false
-        default: "ap-south-1"
-      state_bucket:
-        description: "S3 bucket created by bootstrap"
-        required: false
-        default: "cloudmart-13-tfstate-804431973197"
-      lock_table:
-        description: "DynamoDB lock table created by bootstrap"
-        required: false
-        default: "cloudmart-13-terraform-locks"
-      team_id:
-        description: "CloudMart team/group ID"
-        required: false
-        default: "13"
-      owner_email:
-        description: "Owner email for AWS cost tags"
-        required: false
-        default: "yasiram447@gmail.com"
       preserve_ecr:
         description: "Keep shared ECR repositories and images"
         required: true
@@ -47,11 +27,11 @@ permissions:
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  AWS_REGION: ${{ inputs.aws_region || vars.AWS_REGION || 'ap-south-1' }}
-  TF_STATE_BUCKET: ${{ inputs.state_bucket || vars.TF_STATE_BUCKET || 'cloudmart-13-tfstate-804431973197' }}
-  TF_LOCK_TABLE: ${{ inputs.lock_table || vars.TF_LOCK_TABLE || 'cloudmart-13-terraform-locks' }}
-  CLOUDMART_TEAM_ID: ${{ inputs.team_id || vars.CLOUDMART_TEAM_ID || '13' }}
-  CLOUDMART_OWNER_EMAIL: ${{ inputs.owner_email || vars.CLOUDMART_OWNER_EMAIL || 'yasiram447@gmail.com' }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'cloudmart-13-tfstate-804431973197' }}
+  TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || 'cloudmart-13-terraform-locks' }}
+  CLOUDMART_TEAM_ID: ${{ vars.CLOUDMART_TEAM_ID || '13' }}
+  CLOUDMART_OWNER_EMAIL: ${{ vars.CLOUDMART_OWNER_EMAIL || 'yasiram447@gmail.com' }}
 
 jobs:
   destroy:
