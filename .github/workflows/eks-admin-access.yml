@@ -1,0 +1,29 @@
+name: EKS Admin Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+      aws_region:
+        description: "AWS region"
+        required: false
+        default: "ap-south-1"
+      iam_user_arn:
+        description: "IAM user ARN to grant kubectl access"
+        required: true
+        default: "arn:aws:iam::804431973197:user/cloud-user"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ inputs.aws_region }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'cloudmart-13-tfstate-804431973197' }}
+  TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || 'cloudmart-13-terraform-locks' }}
