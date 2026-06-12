@@ -1,0 +1,40 @@
+name: EKS Build Push Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - prod
+      deploy_to_eks:
+        description: "Apply Kubernetes manifests to EKS"
+        required: true
+        default: true
+        type: boolean
+  push:
+    branches:
+      - staging
+      - main
+    paths:
+      - "services/**"
+      - "k8s/**"
+      - "infra/envs/**"
+      - "infra/modules/eks/**"
+      - ".github/workflows/eks-build-push-deploy.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  IMAGE_TAG: ${{ github.sha }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'cloudmart-13-tfstate-804431973197' }}
+  TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || 'cloudmart-13-terraform-locks' }}
+  CLOUDMART_TEAM_ID: ${{ vars.CLOUDMART_TEAM_ID || '13' }}
+  CLOUDMART_OWNER_EMAIL: ${{ vars.CLOUDMART_OWNER_EMAIL || 'yasiram447@gmail.com' }}
