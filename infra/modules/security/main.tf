@@ -29,7 +29,7 @@ resource "aws_wafv2_web_acl" "this" {
       managed_rule_group_statement  {
         name        = "AWSManagedRulesCommonRuleSet"
         vendor_name = "AWS"
-      }
+       }
     }
 
     visibility_config {
