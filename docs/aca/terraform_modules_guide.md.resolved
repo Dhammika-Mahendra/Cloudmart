@@ -7,6 +7,7 @@
 
 Terraform is an **Infrastructure as Code (IaC)** tool. Instead of clicking around the AWS Console to create databases, networks, etc., you **write code** that describes what you want, and Terraform creates it for you.
 
+
 ```
 You write .tf files  →  terraform apply  →  AWS resources created
 ```
