@@ -1,0 +1,21 @@
+name: Terraform Checks
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-*.yml"
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-*.yml"
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
