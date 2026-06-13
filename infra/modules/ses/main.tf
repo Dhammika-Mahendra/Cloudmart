@@ -14,7 +14,7 @@ resource "aws_iam_policy" "notification_service" {
         "ses:SendEmail",
         "ses:SendRawEmail"
       ]
-      Resource = aws_ses_email_identity.sender.arn
+      Resource = "*"
     }]
   })
 
