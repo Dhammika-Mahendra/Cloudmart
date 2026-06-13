@@ -15,7 +15,7 @@ variable "enable_waf" {
   default     = true
 }
 
-variable "tags" {
+variable "tags"  {
   description = "Common tags."
   type        = map(string)
   default     = {}
