@@ -1,0 +1,34 @@
+name: Terraform Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action to run for the bootstrap stack"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+      aws_region:
+        description: "AWS region"
+        required: true
+        default: "ap-south-1"
+      team_id:
+        description: "CloudMart team/group ID"
+        required: true
+        default: "group-id"
+      owner_email:
+        description: "Owner email for AWS cost tags"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: ${{ inputs.aws_region }}
+
