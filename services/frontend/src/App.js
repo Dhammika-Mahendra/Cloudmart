@@ -165,6 +165,7 @@ function App() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           userId: user.id,
+          userEmail: user.email,
           items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity })),
           shippingAddress: user.address || 'Address not provided',
         }),
@@ -329,7 +330,7 @@ function ProductsPage({ products, addToCart, searchTerm, setSearchTerm, category
               onClick={() => addToCart(product)}
               disabled={product.stock === 0}
             >
-              {product.stock > 0 ? 'Add Product' : 'Out of Stock'}
+              {product.stock > 0 ? 'Add' : 'Out of Stock'}
             </button>
           </div>
         ))}
