@@ -1,0 +1,160 @@
+name: Terraform Destroy Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to destroy"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - prod
+      confirmation:
+        description: "Type destroy-staging or destroy-prod to confirm"
+        required: true
+      preserve_ecr:
+        description: "Keep shared ECR repositories and images"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'cloudmart-13-tfstate-804431973197' }}
+  TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || 'cloudmart-13-terraform-locks' }}
+  CLOUDMART_TEAM_ID: ${{ vars.CLOUDMART_TEAM_ID || '13' }}
+  CLOUDMART_OWNER_EMAIL: ${{ vars.CLOUDMART_OWNER_EMAIL || 'yasiram447@gmail.com' }}
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: infra/envs/${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check confirmation
+        run: |
+          EXPECTED="destroy-${{ inputs.environment }}"
+          if [ "${{ inputs.confirmation }}" != "${EXPECTED}" ]; then
+            echo "::error::Confirmation must be exactly '${EXPECTED}'."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: >
+          terraform init
+          -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
+          -backend-config="key=${{ inputs.environment }}/terraform.tfstate"
+          -backend-config="region=${{ env.AWS_REGION }}"
+          -backend-config="dynamodb_table=${{ env.TF_LOCK_TABLE }}"
+          -backend-config="encrypt=true"
+
+      - name: Delete Kubernetes ingress first
+        run: |
+          set +e
+          EKS_CLUSTER_NAME="$(terraform output -json 2>/dev/null | jq -r '.eks_cluster_name.value // empty')"
+          if [ -z "${EKS_CLUSTER_NAME}" ]; then
+            echo "No EKS cluster output found; skipping Kubernetes cleanup."
+            exit 0
+          fi
+
+          aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}"
+          if [ "$?" -ne 0 ]; then
+            echo "Could not configure kubectl for ${EKS_CLUSTER_NAME}; cluster may already be destroyed."
+            exit 0
+          fi
+
+          kubectl delete ingress cloudmart-frontend \
+            --namespace "cloudmart-${{ inputs.environment }}" \
+            --ignore-not-found=true
+          kubectl scale deployment \
+            frontend product-service order-service user-service notification-service \
+            --namespace "cloudmart-${{ inputs.environment }}" \
+            --replicas=0 || true
+
+      - name: Preserve shared ECR repositories
+        if: inputs.preserve_ecr
+        run: |
+          for ADDRESS in \
+            'module.ecr.aws_ecr_repository.this["frontend"]' \
+            'module.ecr.aws_ecr_repository.this["product-service"]' \
+            'module.ecr.aws_ecr_repository.this["user-service"]' \
+            'module.ecr.aws_ecr_repository.this["order-service"]' \
+            'module.ecr.aws_ecr_repository.this["notification-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["frontend"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["product-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["user-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["order-service"]' \
+            'module.ecr.aws_ecr_lifecycle_policy.this["notification-service"]'
+          do
+            terraform state rm "${ADDRESS}" || true
+          done
+
+      - name: Disable RDS deletion protection
+        run: |
+          RDS_INSTANCE_ID="$(terraform state show module.rds.aws_db_instance.this 2>/dev/null | awk -F' = ' '/^[[:space:]]*identifier[[:space:]]*=/{gsub(/"/, "", $2); print $2; exit}')"
+
+          if [ -z "${RDS_INSTANCE_ID}" ]; then
+            echo "No RDS instance found in Terraform state; skipping deletion protection update."
+            exit 0
+          fi
+
+          RDS_STATUS="$(aws rds describe-db-instances \
+            --db-instance-identifier "${RDS_INSTANCE_ID}" \
+            --query 'DBInstances[0].DBInstanceStatus' \
+            --output text 2>/dev/null || echo missing)"
+
+          if [ "${RDS_STATUS}" = "missing" ]; then
+            echo "RDS ${RDS_INSTANCE_ID} not found in AWS; skipping deletion protection update."
+            exit 0
+          fi
+
+          aws rds modify-db-instance \
+            --db-instance-identifier "${RDS_INSTANCE_ID}" \
+            --no-deletion-protection \
+            --apply-immediately
+
+          aws rds wait db-instance-available \
+            --db-instance-identifier "${RDS_INSTANCE_ID}"
+
+      - name: Terraform destroy plan
+        run: >
+          terraform plan -destroy
+          -var="aws_region=${{ env.AWS_REGION }}"
+          -var="environment=${{ inputs.environment }}"
+          -var="team_id=${{ env.CLOUDMART_TEAM_ID }}"
+          -var="owner_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var="ses_from_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var="alert_email=${{ env.CLOUDMART_OWNER_EMAIL }}"
+          -var="rds_deletion_protection=false"
+          -var="rds_skip_final_snapshot=true"
+          -out=destroy.tfplan
+
+      - name: Terraform destroy apply
+        run: terraform apply -auto-approve destroy.tfplan
