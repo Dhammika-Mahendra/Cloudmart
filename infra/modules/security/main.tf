@@ -1,10 +1,10 @@
-resource "aws_guardduty_detector" "this" {
+resource "aws_guardduty_detector" "this"  {
   count  = var.enable_guardduty ? 1 : 0
   enable = true
 
-  tags = merge(var.tags, {
+  tags = merge(var.tags,  {
     Name = "${var.name_prefix}-guardduty"
-  })
+   })
 }
 
 resource "aws_wafv2_web_acl" "this" {
@@ -13,7 +13,7 @@ resource "aws_wafv2_web_acl" "this" {
   description = "CloudMart baseline WAF for ALB Ingress"
   scope       = "REGIONAL"
 
-  default_action {
+  default_action  {
     allow {}
   }
 
