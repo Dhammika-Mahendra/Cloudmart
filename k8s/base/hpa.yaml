@@ -3,7 +3,9 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: product-service
   namespace: cloudmart-prod
-spec:
+behavior:
+  scaleDown:
+    stabilizationWindowSeconds: 100:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
@@ -17,6 +19,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: 60
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -37,3 +42,6 @@ spec:
         target:
           type: Utilization
           averageUtilization: 60
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
