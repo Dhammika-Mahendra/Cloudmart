@@ -32,3 +32,46 @@ env:
   TF_INPUT: "false"
   AWS_REGION: ${{ inputs.aws_region }}
 
+jobs:
+  bootstrap:
+    name: Bootstrap Terraform State
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/bootstrap
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: >
+          terraform plan
+          -var="aws_region=${{ inputs.aws_region }}"
+          -var="team_id=${{ inputs.team_id }}"
+          -var="owner_email=${{ inputs.owner_email }}"
+          -out=tfplan
+
+      - name: Terraform apply
+        if: inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
