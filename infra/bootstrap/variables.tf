@@ -19,4 +19,5 @@ variable "team_id" {
 variable "owner_email" {
   description = "Owner email used for cost allocation tags."
   type        = string
+  
 }
