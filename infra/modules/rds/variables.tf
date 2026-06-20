@@ -72,6 +72,12 @@ variable "skip_final_snapshot" {
   default     = false
 }
 
+variable "secret_recovery_window_in_days" {
+  description = "Number of days Secrets Manager keeps the RDS secret recoverable after deletion. Use 0 for disposable environments."
+  type        = number
+  default     = 7
+}
+
 variable "tags" {
   description = "Tags to apply to all RDS resources."
   type        = map(string)
