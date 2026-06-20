@@ -45,6 +45,14 @@ jobs:
         working-directory: services/${{ matrix.service }}
         run: python -m py_compile app.py
 
+      - name: Lint with flake8
+        working-directory: services/${{ matrix.service }}
+        run: flake8 app.py
+
+      - name: Run Pytest
+        working-directory: services/${{ matrix.service }}
+        run: pytest
+
   node-services:
     name: Node Service Checks
     runs-on: ubuntu-latest
@@ -68,6 +76,10 @@ jobs:
         working-directory: services/${{ matrix.service }}
         run: npm install
 
+      - name: Run linting
+        working-directory: services/${{ matrix.service }}
+        run: npm run lint
+
       - name: Run tests
         working-directory: services/${{ matrix.service }}
         run: npm test -- --passWithNoTests
@@ -88,6 +100,14 @@ jobs:
       - name: Install dependencies
         working-directory: services/frontend
         run: npm install
+
+      - name: Run linting
+        working-directory: services/frontend
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: services/frontend
+        run: npm test
 
       - name: Build frontend
         working-directory: services/frontend

@@ -261,6 +261,7 @@ For low-cost Stage 2 deployment, NAT Gateway and VPC Flow Logs are disabled by d
 
 _[If your group used GitHub Copilot, ChatGPT, Claude, or any AI assistant, disclose here: which tools, for which tasks, and what review process you applied.]_
 
+
 ---
 
 *IS 4630 Cloud Infrastructure Management | University of Moratuwa | Academic Year 2025/2026*
