@@ -32,16 +32,19 @@ resource "aws_internet_gateway" "this" {
 
 resource "aws_subnet" "public" {
   for_each = {
-    for index, az in local.azs : az => local.public_subnet_cidrs[index]
+    for index in range(var.az_count) : tostring(index) => {
+      az   = local.azs[index]
+      cidr = local.public_subnet_cidrs[index]
+    }
   }
 
   vpc_id                  = aws_vpc.this.id
-  availability_zone       = each.key
-  cidr_block              = each.value
+  availability_zone       = each.value.az
+  cidr_block              = each.value.cidr
   map_public_ip_on_launch = true
 
   tags = merge(var.tags, {
-    Name                     = "${var.name_prefix}-public-${each.key}"
+    Name                     = "${var.name_prefix}-public-${each.value.az}"
     Tier                     = "public"
     "kubernetes.io/role/elb" = "1"
   })
@@ -49,15 +52,18 @@ resource "aws_subnet" "public" {
 
 resource "aws_subnet" "private_app" {
   for_each = {
-    for index, az in local.azs : az => local.private_app_subnet_cidrs[index]
+    for index in range(var.az_count) : tostring(index) => {
+      az   = local.azs[index]
+      cidr = local.private_app_subnet_cidrs[index]
+    }
   }
 
   vpc_id            = aws_vpc.this.id
-  availability_zone = each.key
-  cidr_block        = each.value
+  availability_zone = each.value.az
+  cidr_block        = each.value.cidr
 
   tags = merge(var.tags, {
-    Name                              = "${var.name_prefix}-private-app-${each.key}"
+    Name                              = "${var.name_prefix}-private-app-${each.value.az}"
     Tier                              = "private-app"
     "kubernetes.io/role/internal-elb" = "1"
   })
@@ -65,15 +71,18 @@ resource "aws_subnet" "private_app" {
 
 resource "aws_subnet" "private_data" {
   for_each = {
-    for index, az in local.azs : az => local.private_data_subnet_cidrs[index]
+    for index in range(var.az_count) : tostring(index) => {
+      az   = local.azs[index]
+      cidr = local.private_data_subnet_cidrs[index]
+    }
   }
 
   vpc_id            = aws_vpc.this.id
-  availability_zone = each.key
-  cidr_block        = each.value
+  availability_zone = each.value.az
+  cidr_block        = each.value.cidr
 
   tags = merge(var.tags, {
-    Name = "${var.name_prefix}-private-data-${each.key}"
+    Name = "${var.name_prefix}-private-data-${each.value.az}"
     Tier = "private-data"
   })
 }
@@ -116,9 +125,11 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public" {
-  for_each = aws_subnet.public
+  for_each = {
+    for index in range(var.az_count) : tostring(index) => index
+  }
 
-  subnet_id      = each.value.id
+  subnet_id      = aws_subnet.public[each.key].id
   route_table_id = aws_route_table.public.id
 }
 
@@ -141,9 +152,11 @@ resource "aws_route_table" "private_app" {
 }
 
 resource "aws_route_table_association" "private_app" {
-  for_each = aws_subnet.private_app
+  for_each = {
+    for index in range(var.az_count) : tostring(index) => index
+  }
 
-  subnet_id      = each.value.id
+  subnet_id      = aws_subnet.private_app[each.key].id
   route_table_id = aws_route_table.private_app.id
 }
 
@@ -157,9 +170,11 @@ resource "aws_route_table" "private_data" {
 }
 
 resource "aws_route_table_association" "private_data" {
-  for_each = aws_subnet.private_data
+  for_each = {
+    for index in range(var.az_count) : tostring(index) => index
+  }
 
-  subnet_id      = each.value.id
+  subnet_id      = aws_subnet.private_data[each.key].id
   route_table_id = aws_route_table.private_data.id
 }
 

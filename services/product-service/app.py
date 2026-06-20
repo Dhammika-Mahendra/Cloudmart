@@ -199,7 +199,6 @@ class DynamoDBStore:
         return result
 
     def get_all(self, category=None, search=None):
-        from boto3.dynamodb.conditions import Attr
         if category:
             # Use the category-index GSI for efficient query
             response = self.table.query(
@@ -309,7 +308,6 @@ class DynamoDBStore:
             return True
         except self.table.meta.client.exceptions.ConditionalCheckFailedException:
             return False
-
 
 
 class FirestoreStore:
