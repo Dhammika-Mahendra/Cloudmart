@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - staging
+      - dev_deshani
     paths:
       - "services/**"
       - ".github/workflows/services-ci.yml"
