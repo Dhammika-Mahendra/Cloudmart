@@ -92,6 +92,43 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
+      - name: Import existing ECR repositories
+        run: |
+          set -euo pipefail
+
+          repositories=(
+            "product-service"
+            "order-service"
+            "user-service"
+            "notification-service"
+            "frontend"
+          )
+
+          for repository in "${repositories[@]}"; do
+            repository_name="cloudmart/${repository}"
+            resource_address="module.ecr.aws_ecr_repository.this[\"${repository}\"]"
+
+            if terraform state list | grep -Fxq "${resource_address}"; then
+              echo "${repository_name} is already managed by Terraform state."
+              continue
+            fi
+
+            if aws ecr describe-repositories --repository-names "${repository_name}" >/dev/null 2>&1; then
+              echo "Importing existing ECR repository ${repository_name} into Terraform state."
+              terraform import \
+                -var="aws_region=${{ env.AWS_REGION }}" \
+                -var="environment=${{ inputs.environment }}" \
+                -var="team_id=${{ env.CLOUDMART_TEAM_ID }}" \
+                -var="owner_email=${{ env.CLOUDMART_OWNER_EMAIL }}" \
+                -var="ses_from_email=${{ env.CLOUDMART_OWNER_EMAIL }}" \
+                -var="alert_email=${{ env.CLOUDMART_OWNER_EMAIL }}" \
+                "${resource_address}" \
+                "${repository_name}"
+            else
+              echo "${repository_name} does not exist yet; Terraform will create it."
+            fi
+          done
+
       - name: Terraform plan
         run: >
           terraform plan
