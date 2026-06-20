@@ -42,7 +42,7 @@ resource "aws_db_parameter_group" "this" {
 resource "aws_secretsmanager_secret" "rds_password" {
   name                    = "${var.name_prefix}/rds/master-password"
   description             = "Auto-generated master password for CloudMart RDS instance"
-  recovery_window_in_days = 7
+  recovery_window_in_days = var.secret_recovery_window_in_days
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-rds-master-password"
