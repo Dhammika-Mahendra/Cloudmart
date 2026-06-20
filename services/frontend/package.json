@@ -12,7 +12,12 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test"
+    "test": "react-scripts test --watchAll=false",
+    "lint": "eslint \"src/**/*.js\""
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0"
   },
   "browserslist": {
     "production": [">0.2%", "not dead", "not op_mini all"],
