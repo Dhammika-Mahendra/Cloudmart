@@ -330,7 +330,7 @@ function ProductsPage({ products, addToCart, searchTerm, setSearchTerm, category
               onClick={() => addToCart(product)}
               disabled={product.stock === 0}
             >
-              {product.stock > 0 ? 'Add prod to list' : 'Out of Stock'}
+              {product.stock > 0 ? 'Add prod test' : 'Out of Stock'}
             </button>
           </div>
         ))}
