@@ -19,7 +19,7 @@ spec:
           averageUtilization: 60
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: 80
+      stabilizationWindowSeconds: 30
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -42,4 +42,4 @@ spec:
           averageUtilization: 60
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: 80
+      stabilizationWindowSeconds: 30
