@@ -44,6 +44,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: terraform-${{ inputs.environment }}
+  cancel-in-progress: false
+
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
@@ -76,6 +80,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
+          terraform_wrapper: false
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
@@ -104,11 +109,13 @@ jobs:
             "frontend"
           )
 
+          terraform state list > terraform-state-resources.txt
+
           for repository in "${repositories[@]}"; do
             repository_name="cloudmart/${repository}"
             resource_address="module.ecr.aws_ecr_repository.this[\"${repository}\"]"
 
-            if terraform state list | grep -Fxq "${resource_address}"; then
+            if grep -Fxq "${resource_address}" terraform-state-resources.txt; then
               echo "${repository_name} is already managed by Terraform state."
               continue
             fi
@@ -124,6 +131,7 @@ jobs:
                 -var="alert_email=${{ env.CLOUDMART_OWNER_EMAIL }}" \
                 "${resource_address}" \
                 "${repository_name}"
+              terraform state list > terraform-state-resources.txt
             else
               echo "${repository_name} does not exist yet; Terraform will create it."
             fi
